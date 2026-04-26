@@ -107,5 +107,55 @@ class GameEngine: ObservableObject {
         }
     }
     
-    // TODO: Implement move validation and execution methods
+    // MARK: - Validation Logic
+    
+    /// Checks if a card can be placed onto the Center Ace Foundation.
+    func canMoveToCenterFoundation(card: Card) -> Bool {
+        if centralFoundation.isEmpty {
+            return card.rank == .ace
+        }
+        guard let topCard = centralFoundation.last else { return false }
+        return card.suit == topCard.suit && card.rank.rawValue == topCard.rank.rawValue + 1
+    }
+    
+    /// Checks if a card can be placed onto a specific Corner King Foundation.
+    func canMoveToKingFoundation(card: Card, pileIndex: Int) -> Bool {
+        let pile = kingFoundations[pileIndex]
+        if pile.isEmpty {
+            return card.rank == .king
+        }
+        guard let topCard = pile.last else { return false }
+        return card.suit == topCard.suit && card.rank.rawValue == topCard.rank.rawValue - 1
+    }
+    
+    /// Checks if a card (or sequence of cards) can be placed onto a specific Tableau pile.
+    func canMoveToTableau(cardsToMove: [Card], pileIndex: Int) -> Bool {
+        guard let bottomCard = cardsToMove.first else { return false }
+        let pile = tableaus[pileIndex]
+        
+        if pile.isEmpty {
+            // Empty tableau can accept any valid card or sequence
+            return true
+        }
+        
+        guard let topCard = pile.last else { return false }
+        // Must be alternate color and descending rank
+        return bottomCard.color != topCard.color && bottomCard.rank.rawValue == topCard.rank.rawValue - 1
+    }
+    
+    /// Validates if a sequence of cards selected from a Tableau is valid to move together.
+    func isValidTableauSequence(_ cards: [Card]) -> Bool {
+        guard cards.count > 1 else { return true } // A single card is always valid
+        
+        for i in 0..<(cards.count - 1) {
+            let current = cards[i]
+            let next = cards[i + 1]
+            if current.color == next.color || next.rank.rawValue != current.rank.rawValue - 1 {
+                return false
+            }
+        }
+        return true
+    }
+    
+    // MARK: - Core Actions
 }
