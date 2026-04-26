@@ -15,11 +15,12 @@ class GameEngine: ObservableObject {
     // Tableaus (4 piles of initially 3 face-up cards)
     @Published var tableaus: [[Card]] = Array(repeating: [], count: 4)
     
-    // Stock and Discard
+    // Stock and Temporary Stacks
     @Published var stockpile: [Card] = []
-    @Published var discardPile: [Card] = []
+    @Published var temporaryStacks: [[Card]] = []
     
-    @Published var passesRemaining: Int = 4 // Example: standard solitaire limits to 3 or 4 passes.
+    // Pass tracking (Phase 1 = 4 stacks, Phase 2 = 3 stacks, etc.)
+    @Published var currentPhase: Int = 1
     
     // MARK: - Initialization
     
@@ -33,7 +34,8 @@ class GameEngine: ObservableObject {
         kingFoundations = Array(repeating: [], count: 4)
         reserves = Array(repeating: [], count: 4)
         tableaus = Array(repeating: [], count: 4)
-        discardPile.removeAll()
+        temporaryStacks.removeAll()
+        currentPhase = 1
         
         var deck = Deck(numberOfDecks: 2)
         deck.shuffle()
@@ -66,21 +68,42 @@ class GameEngine: ObservableObject {
         }
     }
     
-    // MARK: - Core Actions (To be implemented)
+    // MARK: - Core Actions
     
     func drawCard() {
+        let maxStacks = 5 - currentPhase // Phase 1 -> 4 stacks, Phase 4 -> 1 stack
+        
+        // Setup initial empty stacks if we're starting a new pass
+        if temporaryStacks.isEmpty && currentPhase <= 4 {
+            temporaryStacks = Array(repeating: [], count: maxStacks)
+        }
+        
+        // Find next stack to deal to (left to right, wrapping around)
         if let card = stockpile.popLast() {
             var drawnCard = card
             drawnCard.isFaceUp = true
-            discardPile.append(drawnCard)
-        } else if passesRemaining > 0 {
-            // Redeal: flip discard pile to form new stockpile
-            stockpile = discardPile.reversed()
-            discardPile.removeAll()
-            for i in 0..<stockpile.count {
-                stockpile[i].isFaceUp = false
+            
+            // Figure out which stack to deal onto based on total cards drawn so far this pass
+            let totalCardsInStacks = temporaryStacks.reduce(0) { $0 + $1.count }
+            let targetStackIndex = totalCardsInStacks % maxStacks
+            
+            temporaryStacks[targetStackIndex].append(drawnCard)
+            
+        } else if currentPhase <= 4 {
+            // Stockpile is empty, consolidate temporary stacks from right to left
+            var newStockpile: [Card] = []
+            
+            for stack in temporaryStacks.reversed() {
+                var flippedStack = stack
+                for i in 0..<flippedStack.count {
+                    flippedStack[i].isFaceUp = false
+                }
+                newStockpile.append(contentsOf: flippedStack)
             }
-            passesRemaining -= 1
+            
+            stockpile = newStockpile.reversed() // maintain correct ordering
+            temporaryStacks.removeAll()
+            currentPhase += 1
         }
     }
     

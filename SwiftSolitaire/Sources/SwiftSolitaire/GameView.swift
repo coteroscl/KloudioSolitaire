@@ -60,20 +60,23 @@ struct GameView: View {
                 
                 Spacer()
                 
-                // Stockpile and Discard Row
+                // Stockpile and Drawing Row
                 HStack(spacing: 40) {
                     Button(action: {
                         engine.drawCard()
-                        // Since GameEngine isn't an ObservableObject yet, this won't auto-refresh the view in this scaffold.
-                        // We will add @Published and ObservableObject protocols later.
                     }) {
                         PileView(cards: engine.stockpile, label: "Stock")
                     }
                     .buttonStyle(PlainButtonStyle())
                     
-                    PileView(cards: engine.discardPile, label: "Discard")
+                    // Temporary Stacks (Phase specific)
+                    HStack(spacing: 20) {
+                        ForEach(0..<engine.temporaryStacks.count, id: \.self) { index in
+                            PileView(cards: engine.temporaryStacks[index], label: "Stack \(index + 1)")
+                        }
+                    }
                     
-                    Text("Passes Left: \(engine.passesRemaining)")
+                    Text(engine.currentPhase <= 4 ? "Phase: \(engine.currentPhase)/4" : "Game Over (No more draws)")
                         .foregroundColor(.white)
                         .font(.headline)
                 }
