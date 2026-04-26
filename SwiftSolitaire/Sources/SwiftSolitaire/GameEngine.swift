@@ -235,7 +235,7 @@ class GameEngine: ObservableObject {
     }
     
     /// Automatically refills an empty tableau from its corresponding reserve pile.
-    private func checkAndRefillEmptyTableaus() {
+    func checkAndRefillEmptyTableaus() {
         for i in 0..<4 {
             if tableaus[i].isEmpty, let reserveCard = reserves[i].popLast() {
                 var flippedCard = reserveCard
