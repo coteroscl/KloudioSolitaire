@@ -32,9 +32,13 @@ The playing area is organized into a cross shape:
 * **Strategic Choice:** When both an Ace sequence and a King sequence of the same suit are active, you can choose whether to play an available card onto the ascending or descending pile.
 
 ### 3.3 Drawing from the Stockpile
-* **Drawing:** Draw **one card at a time** from the face-down Stockpile, placing it face-up onto a single Discard pile.
-* **Playing:** The top card of the Discard pile is available to be played onto the Foundations, King Piles, or Tableau piles.
-* **Exhausting the Stockpile:** Once the Stockpile is empty, the entire Discard pile is turned over to form a new face-down Stockpile (re-dealing). *Note: Standard solitaire limits apply to the number of times you can pass through the deck, usually 3 or 4 passes.*
+* **Drawing:** The Stockpile is drawn through in four distinct phases, forming temporary face-up stacks side-by-side. 
+  * Phase 1: Draw cards one at a time to form 4 temporary stacks.
+  * Phase 2: Form 3 temporary stacks.
+  * Phase 3: Form 2 temporary stacks.
+  * Phase 4 (Final): Form 1 temporary stack.
+* **Playing:** The top cards of any temporary stacks are available to be played onto the Foundations, King Piles, or Tableau piles.
+* **Consolidation:** Once the Stockpile is exhausted in a phase, the temporary stacks are consolidated (stacked on top of each other from right to left) and turned face-down to form the new Stockpile for the next phase. After the 4th phase, no more passes are allowed.
 
 ## 4. Winning and Losing
 * **Winning:** The game is won when all 104 cards have been successfully built into eight complete suit sequences and set aside.
