@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Kloudio}/SwiftSolitaire",
+            "name": "Debug SwiftSolitaire (SwiftSolitaire)",
+            "program": "${workspaceFolder:Kloudio}/SwiftSolitaire/.build/debug/SwiftSolitaire",
+            "preLaunchTask": "swift: Build Debug SwiftSolitaire (SwiftSolitaire)"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Kloudio}/SwiftSolitaire",
+            "name": "Release SwiftSolitaire (SwiftSolitaire)",
+            "program": "${workspaceFolder:Kloudio}/SwiftSolitaire/.build/release/SwiftSolitaire",
+            "preLaunchTask": "swift: Build Release SwiftSolitaire (SwiftSolitaire)"
+        }
+    ]
+}
