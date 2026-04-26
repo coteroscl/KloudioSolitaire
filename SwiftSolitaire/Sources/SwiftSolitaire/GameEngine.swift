@@ -1,5 +1,14 @@
 import Foundation
 
+enum PileLocation: Equatable {
+    case none
+    case tableau(Int)
+    case reserve(Int)
+    case centerFoundation
+    case kingFoundation(Int)
+    case temporaryStack(Int)
+}
+
 class GameEngine: ObservableObject {
     // MARK: - Game State
     
@@ -21,6 +30,11 @@ class GameEngine: ObservableObject {
     
     // Pass tracking (Phase 1 = 4 stacks, Phase 2 = 3 stacks, etc.)
     @Published var currentPhase: Int = 1
+    
+    // MARK: - Drag and Drop State
+    @Published var draggedCards: [Card] = []
+    @Published var dragSource: PileLocation = .none
+    @Published var dragOffset: CGSize = .zero
     
     // MARK: - Initialization
     
@@ -158,4 +172,76 @@ class GameEngine: ObservableObject {
     }
     
     // MARK: - Core Actions
+    
+    // MARK: - Drag and Drop Execution
+    
+    /// Called when the user starts dragging a card or sequence of cards.
+    func startDrag(cards: [Card], source: PileLocation) {
+        self.draggedCards = cards
+        self.dragSource = source
+    }
+    
+    /// Called when the user releases a dragged stack of cards.
+    func handleDrop(on target: PileLocation) {
+        guard !draggedCards.isEmpty else { return }
+        
+        var moveSuccessful = false
+        
+        switch target {
+        case .centerFoundation:
+            if draggedCards.count == 1, canMoveToCenterFoundation(card: draggedCards[0]) {
+                centralFoundation.append(draggedCards[0])
+                moveSuccessful = true
+            }
+        case .kingFoundation(let index):
+            if draggedCards.count == 1, canMoveToKingFoundation(card: draggedCards[0], pileIndex: index) {
+                kingFoundations[index].append(draggedCards[0])
+                moveSuccessful = true
+            }
+        case .tableau(let index):
+            if canMoveToTableau(cardsToMove: draggedCards, pileIndex: index) {
+                tableaus[index].append(contentsOf: draggedCards)
+                moveSuccessful = true
+            }
+        default:
+            break
+        }
+        
+        if moveSuccessful {
+            removeCardsFromSource()
+            // Check if we need to auto-flip a reserve card
+            checkAndRefillEmptyTableaus()
+        }
+        
+        // Reset drag state
+        self.draggedCards = []
+        self.dragSource = .none
+        self.dragOffset = .zero
+    }
+    
+    /// Removes the successfully moved cards from their original location.
+    private func removeCardsFromSource() {
+        let countToRemove = draggedCards.count
+        switch dragSource {
+        case .tableau(let index):
+            tableaus[index].removeLast(countToRemove)
+        case .temporaryStack(let index):
+            temporaryStacks[index].removeLast(countToRemove)
+        case .reserve(let index):
+            reserves[index].removeLast(countToRemove)
+        default:
+            break
+        }
+    }
+    
+    /// Automatically refills an empty tableau from its corresponding reserve pile.
+    private func checkAndRefillEmptyTableaus() {
+        for i in 0..<4 {
+            if tableaus[i].isEmpty, let reserveCard = reserves[i].popLast() {
+                var flippedCard = reserveCard
+                flippedCard.isFaceUp = true
+                tableaus[i].append(flippedCard)
+            }
+        }
+    }
 }
