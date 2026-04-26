@@ -46,15 +46,15 @@ Before starting development, note these essential rule corrections derived from 
    - Implement drag gestures for cards.
    - Highlight valid drop zones when hovering over them.
    - Snap cards back to their origin if dropped in an invalid location.
-2. **Tap-to-Move (Optional but Recommended)**:
+2. **✅Tap-to-Move (Optional but Recommended)**:
    - Double-tapping a card automatically sends it to a valid Foundation or King pile if a valid move exists.
-3. **Animations**:
+3. **✅Animations**:
    - Smooth dealing animations at the start of the game.
    - Card flipping animations.
    - Completed Foundation/King pile removal animations (clearing the spot for a new sequence).
 
 ### Phase 4: Polish, Winning/Losing Conditions, and Extras
-1. **Win/Loss Detection**:
+1. **✅Win/Loss Detection**:
    - **Win**: All 104 cards successfully played into the 8 completed sequences.
    - **Loss**: No more valid moves available, and the stockpile has been exhausted through all its allowed passes.
 2. **Undo/Redo System**:

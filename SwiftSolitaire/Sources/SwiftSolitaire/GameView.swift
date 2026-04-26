@@ -5,7 +5,17 @@ struct GameView: View {
     
     var body: some View {
         ZStack {
-            Color.green.edgesIgnoringSafeArea(.all) // Classic felt table
+            // Rich felt table background
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(red: 0.05, green: 0.35, blue: 0.15),
+                    Color(red: 0.08, green: 0.45, blue: 0.2),
+                    Color(red: 0.05, green: 0.35, blue: 0.15)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .edgesIgnoringSafeArea(.all)
             
             VStack(spacing: 20) {
                 // Top Row: North Reserve & Tableau
@@ -63,7 +73,9 @@ struct GameView: View {
                 // Stockpile and Drawing Row
                 HStack(spacing: 40) {
                     Button(action: {
-                        engine.drawCard()
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            engine.drawCard()
+                        }
                     }) {
                         PileView(cards: engine.stockpile, label: "Stock")
                     }
@@ -94,7 +106,37 @@ struct GameView: View {
                 }
                 .offset(engine.dragOffset)
                 .opacity(0.85)
+                .shadow(color: .black.opacity(0.4), radius: 8, x: 2, y: 4)
                 .animation(.none, value: engine.dragOffset)
+            }
+            
+            // MARK: - Victory Overlay
+            if engine.isGameWon {
+                Color.black.opacity(0.6)
+                    .edgesIgnoringSafeArea(.all)
+                    .transition(.opacity)
+                
+                VStack(spacing: 20) {
+                    Text("🎉 You Won! 🎉")
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundColor(.yellow)
+                        .shadow(color: .orange, radius: 10)
+                    
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            engine.startNewGame()
+                        }
+                    }) {
+                        Text("New Game")
+                            .font(.title2.bold())
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 30)
+                            .padding(.vertical, 12)
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                    }
+                }
+                .transition(.scale.combined(with: .opacity))
             }
         }
     }
@@ -140,6 +182,12 @@ struct DraggablePileView: View {
             
             if let topCard = cards.last {
                 CardView(card: topCard)
+                    .onTapGesture(count: 2) {
+                        // Double-tap: auto-move to foundation/king pile
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            engine.autoMove(card: topCard, from: location)
+                        }
+                    }
                     .gesture(
                         DragGesture()
                             .onChanged { gesture in
@@ -147,9 +195,9 @@ struct DraggablePileView: View {
                                 engine.dragOffset = gesture.translation
                             }
                             .onEnded { _ in
-                                // For now, snap back. Hit-testing for drop targets
-                                // will be added when we integrate geometry readers.
-                                engine.handleDrop(on: .none)
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    engine.handleDrop(on: .none)
+                                }
                             }
                     )
             }
@@ -263,10 +311,18 @@ struct DraggableTableauPileView: View {
                 CardView(card: card)
                     .offset(y: CGFloat(index * 25))
                     .opacity(isDragging(cardIndex: index) ? 0.3 : 1.0)
+                    .onTapGesture(count: 2) {
+                        // Double-tap: auto-move to foundation/king pile
+                        // Only works on the top card of the tableau
+                        if index == cards.count - 1 {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                engine.autoMove(card: card, from: .tableau(pileIndex))
+                            }
+                        }
+                    }
                     .gesture(
                         DragGesture()
                             .onChanged { gesture in
-                                // Pick up this card and everything below it in the cascade
                                 let cardsToGrab = Array(cards[index...])
                                 if engine.isValidTableauSequence(cardsToGrab) {
                                     engine.startDrag(cards: cardsToGrab, source: .tableau(pileIndex))
@@ -274,11 +330,12 @@ struct DraggableTableauPileView: View {
                                 }
                             }
                             .onEnded { _ in
-                                // Snap back for now; drop target hit-testing
-                                // will be enhanced with GeometryReader in Phase 3 polish.
-                                engine.handleDrop(on: .none)
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    engine.handleDrop(on: .none)
+                                }
                             }
                     )
+                    .animation(.easeInOut(duration: 0.2), value: cards.count)
             }
         }
         .frame(width: 70, height: 100 + CGFloat(max(0, cards.count - 1) * 25))

@@ -244,4 +244,78 @@ class GameEngine: ObservableObject {
             }
         }
     }
+    
+    // MARK: - Auto-Move (Tap-to-Move)
+    
+    /// Attempts to automatically move a card to a valid foundation or king pile.
+    /// Returns true if the card was successfully moved.
+    @discardableResult
+    func autoMove(card: Card, from source: PileLocation) -> Bool {
+        // Try center foundation first (Ace piles)
+        if canMoveToCenterFoundation(card: card) {
+            centralFoundation.append(card)
+            removeCardFromPile(source: source)
+            checkAndRefillEmptyTableaus()
+            checkCompletedFoundations()
+            return true
+        }
+        
+        // Try each king foundation
+        for i in 0..<4 {
+            if canMoveToKingFoundation(card: card, pileIndex: i) {
+                kingFoundations[i].append(card)
+                removeCardFromPile(source: source)
+                checkAndRefillEmptyTableaus()
+                checkCompletedFoundations()
+                return true
+            }
+        }
+        
+        return false
+    }
+    
+    /// Removes a single card from the top of the specified pile.
+    private func removeCardFromPile(source: PileLocation) {
+        switch source {
+        case .tableau(let index):
+            tableaus[index].removeLast()
+        case .temporaryStack(let index):
+            temporaryStacks[index].removeLast()
+        case .reserve(let index):
+            reserves[index].removeLast()
+        default:
+            break
+        }
+    }
+    
+    // MARK: - Foundation Completion
+    
+    /// Checks if any foundation or king pile is complete (13 cards) and removes it.
+    func checkCompletedFoundations() {
+        // Check center foundation (Ace to King = 13 cards)
+        if centralFoundation.count == 13 {
+            centralFoundation.removeAll()
+        }
+        
+        // Check king foundations (King to Ace = 13 cards)
+        for i in 0..<4 {
+            if kingFoundations[i].count == 13 {
+                kingFoundations[i].removeAll()
+            }
+        }
+    }
+    
+    // MARK: - Win Detection
+    
+    /// Returns true if all 104 cards have been played into completed foundations.
+    var isGameWon: Bool {
+        let totalCardsRemaining =
+            centralFoundation.count +
+            kingFoundations.reduce(0) { $0 + $1.count } +
+            reserves.reduce(0) { $0 + $1.count } +
+            tableaus.reduce(0) { $0 + $1.count } +
+            stockpile.count +
+            temporaryStacks.reduce(0) { $0 + $1.count }
+        return totalCardsRemaining == 0
+    }
 }
