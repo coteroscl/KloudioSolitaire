@@ -1,0 +1,357 @@
+/* ============================================
+   Kloudio Solitaire - Web Prototype Styles
+   ============================================ */
+
+:root {
+    --felt-dark: #0a3318;
+    --felt-mid: #0e4a22;
+    --felt-light: #12572a;
+    --card-width: 75px;
+    --card-height: 105px;
+    --card-radius: 8px;
+    --card-gap: 24px;
+    --gold: #ffd700;
+    --gold-dim: rgba(255, 215, 0, 0.3);
+    --hint-glow: rgba(0, 200, 255, 0.7);
+    --shadow-card: 0 2px 6px rgba(0,0,0,0.4);
+    --transition-fast: 0.2s ease;
+    --transition-med: 0.35s ease;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, var(--felt-dark), var(--felt-mid), var(--felt-dark));
+    min-height: 100vh;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* ---- Toolbar ---- */
+#toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 10px 24px;
+    background: rgba(0,0,0,0.35);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.toolbar-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: none;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 6px 14px;
+    cursor: pointer;
+    color: #ccc;
+    transition: var(--transition-fast);
+}
+.toolbar-btn:hover:not(:disabled) {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border-color: rgba(255,255,255,0.3);
+}
+.toolbar-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+.toolbar-btn .btn-icon { font-size: 20px; }
+.toolbar-btn .btn-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.hint-btn { color: var(--gold); border-color: rgba(255,215,0,0.3); }
+.hint-btn:hover { background: rgba(255,215,0,0.1); }
+
+.new-btn { color: #7dd3fc; border-color: rgba(125,211,252,0.3); }
+.new-btn:hover { background: rgba(125,211,252,0.1); }
+
+#phase-display {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 0 20px;
+    letter-spacing: 0.5px;
+}
+
+/* ---- Game Board (3x3 Grid) ---- */
+#game-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+#board {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 4px;
+    padding: 8px 20px;
+}
+
+.board-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--card-gap);
+}
+
+/* Center cell: 5 foundation slots (2 kings top, ace center, 2 kings bottom) */
+#cell-center {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 6px;
+    align-items: center;
+    justify-items: center;
+    padding: 8px;
+    border: 2px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    background: rgba(0,0,0,0.15);
+}
+#ace-foundation {
+    grid-column: 1 / 3;
+    grid-row: 2;
+}
+
+/* ---- Stock Area ---- */
+#stock-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 8px 24px 14px;
+    background: rgba(0,0,0,0.2);
+    border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+#temp-stacks-container {
+    display: flex;
+    gap: 12px;
+}
+
+/* ---- Pile (generic drop zone) ---- */
+.pile {
+    position: relative;
+    width: var(--card-width);
+    min-height: var(--card-height);
+    border: 2px dashed rgba(255,255,255,0.2);
+    border-radius: var(--card-radius);
+    transition: var(--transition-fast);
+}
+
+.pile.drop-valid {
+    border-color: var(--gold);
+    background: var(--gold-dim);
+    box-shadow: 0 0 12px var(--gold-dim);
+}
+
+.pile.hint-source .card:last-child,
+.pile.hint-target {
+    animation: hintPulse 1s ease-in-out infinite alternate;
+}
+
+.pile::after {
+    content: attr(data-label);
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    color: rgba(255,255,255,0.35);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    pointer-events: none;
+}
+
+/* ---- Card ---- */
+.card {
+    position: absolute;
+    width: var(--card-width);
+    height: var(--card-height);
+    border-radius: var(--card-radius);
+    cursor: grab;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+    box-shadow: var(--shadow-card);
+    transform-style: preserve-3d;
+}
+.card:active { cursor: grabbing; }
+
+/* Face-up card */
+.card-face {
+    background: #fff;
+    border: 1px solid #bbb;
+    border-radius: var(--card-radius);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 4px 5px;
+    width: 100%;
+    height: 100%;
+}
+.card-face .card-corner {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+}
+.card-face .card-corner-bottom {
+    text-align: right;
+    transform: rotate(180deg);
+}
+.card-face .card-center {
+    font-size: 28px;
+    text-align: center;
+    line-height: 1;
+}
+.card.red .card-face { color: #c0392b; }
+.card.black .card-face { color: #1a1a2e; }
+
+/* Face-down card */
+.card-back {
+    background: linear-gradient(135deg, #1a2a5e, #2d4a8a);
+    border: 1px solid #3a5a9a;
+    border-radius: var(--card-radius);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+.card-back::before {
+    content: '♠';
+    font-size: 36px;
+    color: rgba(255,255,255,0.12);
+}
+.card-back::after {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 5px;
+}
+
+/* Card being dragged (in its original position) */
+.card.dragging {
+    opacity: 0.25;
+    transform: scale(0.95);
+}
+
+/* Card flip animation */
+.card.flipping {
+    animation: cardFlip 0.4s ease-in-out;
+}
+
+/* ---- Drag Ghost ---- */
+#drag-ghost {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.9;
+    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5));
+}
+#drag-ghost .card {
+    position: relative;
+    cursor: grabbing;
+}
+
+/* ---- Overlays ---- */
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    animation: fadeIn 0.3s ease;
+}
+.overlay.hidden { display: none; }
+
+.overlay-content {
+    background: rgba(20, 30, 50, 0.9);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 40px 50px;
+    text-align: center;
+    color: #fff;
+    max-width: 420px;
+}
+.overlay-content h1 {
+    font-size: 36px;
+    margin-bottom: 12px;
+}
+.overlay-content p {
+    font-size: 15px;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+.overlay-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+.overlay-btn {
+    padding: 12px 28px;
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff;
+    transition: var(--transition-fast);
+}
+.overlay-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(59,130,246,0.4);
+}
+.overlay-btn.secondary {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+.overlay-btn.secondary:hover {
+    box-shadow: 0 4px 16px rgba(245,158,11,0.4);
+}
+
+/* ---- Animations ---- */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes cardFlip {
+    0% { transform: perspective(600px) rotateY(0deg); }
+    50% { transform: perspective(600px) rotateY(90deg); }
+    100% { transform: perspective(600px) rotateY(0deg); }
+}
+
+@keyframes hintPulse {
+    from {
+        box-shadow: 0 0 6px var(--hint-glow);
+        border-color: rgba(0, 200, 255, 0.5);
+    }
+    to {
+        box-shadow: 0 0 18px var(--hint-glow);
+        border-color: rgba(0, 200, 255, 0.9);
+    }
+}
+
+/* ---- Tableau cascade offset ---- */
+.tableau-pile .card {
+    /* JS sets --card-index for each card */
+    top: calc(var(--card-index, 0) * 24px);
+}
