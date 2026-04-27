@@ -1,4 +1,6 @@
-import SwiftUI
+enum FanDirection {
+    case north, south, east, west
+}
 
 struct GameView: View {
     @StateObject private var engine = GameEngine()
@@ -17,58 +19,54 @@ struct GameView: View {
             )
             .edgesIgnoringSafeArea(.all)
             
-            VStack(spacing: 20) {
-                // Top Row: North Reserve & Tableau
-                HStack(spacing: 20) {
-                    ReservePileView(cards: engine.reserves[0], label: "North Res", location: .reserve(0), engine: engine)
-                    DraggableTableauPileView(cards: engine.tableaus[0], pileIndex: 0, engine: engine)
-                }
+            VStack(spacing: 40) {
+                Spacer()
                 
-                // Middle Row: West, Center, East
-                HStack(spacing: 20) {
-                    // West Reserve & Tableau
-                    VStack(spacing: 10) {
-                        ReservePileView(cards: engine.reserves[3], label: "West Res", location: .reserve(3), engine: engine)
-                        DraggableTableauPileView(cards: engine.tableaus[3], pileIndex: 3, engine: engine)
+                // The main 3x3 game board
+                VStack(spacing: 20) {
+                    // Row 1: King 0 (NW), North Tableau/Reserve, King 1 (NE)
+                    HStack(spacing: 40) {
+                        DropTargetPileView(cards: engine.kingFoundations[0], label: "K", location: .kingFoundation(0), engine: engine)
+                            .rotationEffect(.degrees(45))
+                        
+                        VStack(spacing: 8) {
+                            DraggableTableauPileView(cards: engine.tableaus[0], pileIndex: 0, engine: engine, fanDirection: .north)
+                            ReservePileView(cards: engine.reserves[0], label: "", location: .reserve(0), engine: engine)
+                        }
+                        
+                        DropTargetPileView(cards: engine.kingFoundations[1], label: "K", location: .kingFoundation(1), engine: engine)
+                            .rotationEffect(.degrees(45))
                     }
                     
-                    // Center Foundations (King corners & Ace Center)
-                    ZStack {
-                        // Background square for foundations
-                        Rectangle()
-                            .stroke(Color.white.opacity(0.3), lineWidth: 2)
-                            .frame(width: 250, height: 250)
+                    // Row 2: West Tableau/Reserve, Ace Center, East Tableau/Reserve
+                    HStack(spacing: 40) {
+                        HStack(spacing: 8) {
+                            DraggableTableauPileView(cards: engine.tableaus[2], pileIndex: 2, engine: engine, fanDirection: .west)
+                            ReservePileView(cards: engine.reserves[2], label: "", location: .reserve(2), engine: engine)
+                        }
                         
-                        // Center Ace Foundation (drop target)
-                        DropTargetPileView(cards: engine.centralFoundation, label: "Ace", location: .centerFoundation, engine: engine)
+                        DropTargetPileView(cards: engine.centralFoundation, label: "A", location: .centerFoundation, engine: engine)
                         
-                        // Corner King Foundations (drop targets)
-                        VStack(spacing: 150) {
-                            HStack(spacing: 150) {
-                                DropTargetPileView(cards: engine.kingFoundations[0], label: "King", location: .kingFoundation(0), engine: engine)
-                                DropTargetPileView(cards: engine.kingFoundations[1], label: "King", location: .kingFoundation(1), engine: engine)
-                            }
-                            HStack(spacing: 150) {
-                                DropTargetPileView(cards: engine.kingFoundations[2], label: "King", location: .kingFoundation(2), engine: engine)
-                                DropTargetPileView(cards: engine.kingFoundations[3], label: "King", location: .kingFoundation(3), engine: engine)
-                            }
+                        HStack(spacing: 8) {
+                            ReservePileView(cards: engine.reserves[3], label: "", location: .reserve(3), engine: engine)
+                            DraggableTableauPileView(cards: engine.tableaus[3], pileIndex: 3, engine: engine, fanDirection: .east)
                         }
                     }
                     
-                    // East Tableau & Reserve
-                    VStack(spacing: 10) {
-                        DraggableTableauPileView(cards: engine.tableaus[1], pileIndex: 1, engine: engine)
-                        ReservePileView(cards: engine.reserves[1], label: "East Res", location: .reserve(1), engine: engine)
+                    // Row 3: King 2 (SW), South Tableau/Reserve, King 3 (SE)
+                    HStack(spacing: 40) {
+                        DropTargetPileView(cards: engine.kingFoundations[2], label: "K", location: .kingFoundation(2), engine: engine)
+                            .rotationEffect(.degrees(45))
+                        
+                        VStack(spacing: 8) {
+                            ReservePileView(cards: engine.reserves[1], label: "", location: .reserve(1), engine: engine)
+                            DraggableTableauPileView(cards: engine.tableaus[1], pileIndex: 1, engine: engine, fanDirection: .south)
+                        }
+                        
+                        DropTargetPileView(cards: engine.kingFoundations[3], label: "K", location: .kingFoundation(3), engine: engine)
+                            .rotationEffect(.degrees(45))
                     }
                 }
-                
-                // Bottom Row: South Tableau & Reserve
-                HStack(spacing: 20) {
-                    DraggableTableauPileView(cards: engine.tableaus[2], pileIndex: 2, engine: engine)
-                    ReservePileView(cards: engine.reserves[2], label: "South Res", location: .reserve(2), engine: engine)
-                }
-                
-                Spacer()
                 
                 // MARK: - Toolbar (Undo, Redo, Hint, New Game)
                 HStack(spacing: 20) {
@@ -413,6 +411,7 @@ struct DraggableTableauPileView: View {
     var cards: [Card]
     var pileIndex: Int
     @ObservedObject var engine: GameEngine
+    var fanDirection: FanDirection = .south
     
     private var isHintSource: Bool {
         engine.currentHint?.from == .tableau(pileIndex)
@@ -440,7 +439,7 @@ struct DraggableTableauPileView: View {
             // Display cascading cards, each individually draggable
             ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
                 CardView(card: card)
-                    .offset(y: CGFloat(index * 25))
+                    .offset(fanOffset(index: index))
                     .opacity(isDragging(cardIndex: index) ? 0.3 : 1.0)
                     .onTapGesture(count: 2) {
                         // Double-tap: auto-move to foundation/king pile
@@ -469,7 +468,17 @@ struct DraggableTableauPileView: View {
                     .animation(.easeInOut(duration: 0.2), value: cards.count)
             }
         }
-        .frame(width: 70, height: 100 + CGFloat(max(0, cards.count - 1) * 25))
+        .frame(width: 70, height: 100)
+    }
+    
+    private func fanOffset(index: Int) -> CGSize {
+        let step: CGFloat = 28
+        switch fanDirection {
+        case .north: return CGSize(width: 0, height: -CGFloat(index) * step)
+        case .south: return CGSize(width: 0, height: CGFloat(index) * step)
+        case .east: return CGSize(width: CGFloat(index) * step, height: 0)
+        case .west: return CGSize(width: -CGFloat(index) * step, height: 0)
+        }
     }
     
     /// Checks if the given card index is part of the currently dragged stack from this pile.
