@@ -12,11 +12,17 @@ The game is won when all 104 cards are successfully played into these eight comp
 ## 2. Game Setup
 The playing area is organized into a cross shape:
 
-* **Central Foundation Area:** Initially empty. Only one Ace-to-King sequence can be built here at a time.
-* **King Pile Positions:** Four designated empty spots surrounding the central area (the corners). Up to four King-to-Ace sequences can be active at a time. Suits can be duplicated.
-* **Reserve Piles:** Four piles of 10 face-down cards each, arranged in a cross (North, South, East, West).
-* **Tableau Piles:** Four piles initially dealt with 3 face-up cards, placed next to each of the four Reserve piles.
-* **Stockpile:** The remaining 52 cards are kept face-down to be drawn from during play.
+* **Central Foundation Area:** Initially empty. Built UP from Ace to King.
+* **King Pile Positions:** Four corners. Built DOWN from King to Ace (45° radial orientation).
+* **Reserve Piles:** 10 face-down cards.
+    *   **North/South:** Horizontal orientation.
+    *   **East/West:** Vertical orientation.
+* **Tableau Piles:** Placed adjacent to Reserves, fanning OUTWARD from the center.
+    *   **North:** Tableau ABOVE Reserve, horizontal, fanning UP (visible card top).
+    *   **South:** Tableau BELOW Reserve, horizontal, fanning DOWN (visible card bottom).
+    *   **East:** Tableau RIGHT of Reserve, vertical, fanning RIGHT (visible card right).
+    *   **West:** Tableau LEFT of Reserve, vertical, fanning LEFT (visible card left).
+* **Stockpile:** 52 cards remaining. Phase-based drawing.
 
 ## 3. Rules of Play
 

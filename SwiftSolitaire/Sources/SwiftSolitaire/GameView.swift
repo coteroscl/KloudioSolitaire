@@ -25,13 +25,13 @@ struct GameView: View {
                 // The main 3x3 game board
                 VStack(spacing: 20) {
                     // Row 1: King 0 (NW), North Tableau/Reserve, King 1 (NE)
-                    HStack(spacing: 40) {
+                    HStack(spacing: 30) {
                         DropTargetPileView(cards: engine.kingFoundations[0], label: "K", location: .kingFoundation(0), engine: engine)
                             .rotationEffect(.degrees(-45))
                         
                         VStack(spacing: 8) {
-                            DraggableTableauPileView(cards: engine.tableaus[0], pileIndex: 0, engine: engine, fanDirection: .north)
-                            ReservePileView(cards: engine.reserves[0], label: "", location: .reserve(0), engine: engine)
+                            DraggableTableauPileView(cards: engine.tableaus[0], pileIndex: 0, engine: engine, fanDirection: .north, isRotated: true)
+                            ReservePileView(cards: engine.reserves[0], label: "", location: .reserve(0), engine: engine, isRotated: true)
                         }
                         
                         DropTargetPileView(cards: engine.kingFoundations[1], label: "K", location: .kingFoundation(1), engine: engine)
@@ -39,7 +39,7 @@ struct GameView: View {
                     }
                     
                     // Row 2: West Tableau/Reserve, Ace Center, East Tableau/Reserve
-                    HStack(spacing: 40) {
+                    HStack(spacing: 30) {
                         HStack(spacing: 8) {
                             DraggableTableauPileView(cards: engine.tableaus[2], pileIndex: 2, engine: engine, fanDirection: .west)
                             ReservePileView(cards: engine.reserves[2], label: "", location: .reserve(2), engine: engine)
@@ -54,13 +54,13 @@ struct GameView: View {
                     }
                     
                     // Row 3: King 2 (SW), South Tableau/Reserve, King 3 (SE)
-                    HStack(spacing: 40) {
+                    HStack(spacing: 30) {
                         DropTargetPileView(cards: engine.kingFoundations[2], label: "K", location: .kingFoundation(2), engine: engine)
                             .rotationEffect(.degrees(-135))
                         
                         VStack(spacing: 8) {
-                            ReservePileView(cards: engine.reserves[1], label: "", location: .reserve(1), engine: engine)
-                            DraggableTableauPileView(cards: engine.tableaus[1], pileIndex: 1, engine: engine, fanDirection: .south)
+                            ReservePileView(cards: engine.reserves[1], label: "", location: .reserve(1), engine: engine, isRotated: true)
+                            DraggableTableauPileView(cards: engine.tableaus[1], pileIndex: 1, engine: engine, fanDirection: .south, isRotated: true)
                         }
                         
                         DropTargetPileView(cards: engine.kingFoundations[3], label: "K", location: .kingFoundation(3), engine: engine)
@@ -261,17 +261,19 @@ struct GameView: View {
 struct PileView: View {
     var cards: [Card]
     var label: String
+    var isRotated: Bool = false
     
     var body: some View {
         ZStack {
             // Placeholder when empty
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.white.opacity(0.5), lineWidth: 2)
-                .frame(width: 70, height: 100)
+                .frame(width: isRotated ? 84 : 60, height: isRotated ? 60 : 84)
                 .overlay(Text(label).font(.caption).foregroundColor(.white))
             
             if let topCard = cards.last {
                 CardView(card: topCard)
+                    .rotationEffect(.degrees(isRotated ? 90 : 0))
             }
         }
     }
@@ -285,6 +287,7 @@ struct DraggablePileView: View {
     var label: String
     var location: PileLocation
     @ObservedObject var engine: GameEngine
+    var isRotated: Bool = false
     
     private var isHintSource: Bool {
         engine.currentHint?.from == location
@@ -294,11 +297,12 @@ struct DraggablePileView: View {
         ZStack {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(isHintSource ? Color.cyan : Color.white.opacity(0.5), lineWidth: isHintSource ? 3 : 2)
-                .frame(width: 70, height: 100)
+                .frame(width: isRotated ? 84 : 60, height: isRotated ? 60 : 84)
                 .overlay(Text(label).font(.caption).foregroundColor(.white))
             
             if let topCard = cards.last {
                 CardView(card: topCard)
+                    .rotationEffect(.degrees(isRotated ? 90 : 0))
                     .onTapGesture(count: 2) {
                         // Double-tap: auto-move to foundation/king pile
                         withAnimation(.easeInOut(duration: 0.3)) {
@@ -330,16 +334,18 @@ struct ReservePileView: View {
     var label: String
     var location: PileLocation
     @ObservedObject var engine: GameEngine
+    var isRotated: Bool = false
     
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.white.opacity(0.5), lineWidth: 2)
-                .frame(width: 70, height: 100)
+                .frame(width: isRotated ? 84 : 60, height: isRotated ? 60 : 84)
                 .overlay(Text(label).font(.caption).foregroundColor(.white))
             
             if let topCard = cards.last {
                 CardView(card: topCard)
+                    .rotationEffect(.degrees(isRotated ? 90 : 0))
                     .onTapGesture {
                         // Tapping a reserve card flips it into its tableau
                         // (handled automatically by checkAndRefillEmptyTableaus)
@@ -362,6 +368,7 @@ struct DropTargetPileView: View {
     var label: String
     var location: PileLocation
     @ObservedObject var engine: GameEngine
+    var isRotated: Bool = false
     
     private var isHintTarget: Bool {
         engine.currentHint?.to == location
@@ -371,13 +378,14 @@ struct DropTargetPileView: View {
         ZStack {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(isValidDropTarget ? Color.yellow : (isHintTarget ? Color.cyan : Color.white.opacity(0.5)), lineWidth: isValidDropTarget || isHintTarget ? 3 : 2)
-                .frame(width: 70, height: 100)
+                .frame(width: isRotated ? 84 : 60, height: isRotated ? 60 : 84)
                 .overlay(Text(label).font(.caption).foregroundColor(.white))
                 .background(isValidDropTarget ? Color.yellow.opacity(0.15) : (isHintTarget ? Color.cyan.opacity(0.15) : Color.clear))
                 .cornerRadius(8)
             
             if let topCard = cards.last {
                 CardView(card: topCard)
+                    .rotationEffect(.degrees(isRotated ? 90 : 0))
             }
         }
         .onTapGesture {
@@ -412,6 +420,7 @@ struct DraggableTableauPileView: View {
     var pileIndex: Int
     @ObservedObject var engine: GameEngine
     var fanDirection: FanDirection = .south
+    var isRotated: Bool = false
     
     private var isHintSource: Bool {
         engine.currentHint?.from == .tableau(pileIndex)
@@ -426,7 +435,7 @@ struct DraggableTableauPileView: View {
             // Drop target placeholder
             RoundedRectangle(cornerRadius: 8)
                 .stroke(isValidDropTarget ? Color.yellow : (isHintTarget || isHintSource ? Color.cyan : Color.white.opacity(0.5)), lineWidth: isValidDropTarget || isHintTarget || isHintSource ? 3 : 2)
-                .frame(width: 70, height: 100)
+                .frame(width: isRotated ? 84 : 60, height: isRotated ? 60 : 84)
                 .background(isValidDropTarget ? Color.yellow.opacity(0.15) : (isHintTarget ? Color.cyan.opacity(0.15) : Color.clear))
                 .cornerRadius(8)
                 .onTapGesture {
@@ -468,11 +477,12 @@ struct DraggableTableauPileView: View {
                     .animation(.easeInOut(duration: 0.2), value: cards.count)
             }
         }
-        .frame(width: 70, height: 100)
+        .rotationEffect(.degrees(isRotated ? 90 : 0))
+        .frame(width: isRotated ? 84 : 60, height: isRotated ? 60 : 84)
     }
     
     private func fanOffset(index: Int) -> CGSize {
-        let step: CGFloat = 28
+        let step: CGFloat = 22
         switch fanDirection {
         case .north: return CGSize(width: 0, height: -CGFloat(index) * step)
         case .south: return CGSize(width: 0, height: CGFloat(index) * step)

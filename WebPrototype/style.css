@@ -6,16 +6,16 @@
     --felt-dark: #0a3318;
     --felt-mid: #0e4a22;
     --felt-light: #12572a;
-    --card-width: 75px;
-    --card-height: 105px;
-    --card-radius: 8px;
-    --card-gap: 24px;
+    --card-width: 65px;
+    --card-height: 91px;
+    --card-radius: 6px;
+    --card-gap: 12px;
     --gold: #ffd700;
     --gold-dim: rgba(255, 215, 0, 0.3);
     --hint-glow: rgba(0, 200, 255, 0.7);
     --shadow-card: 0 2px 6px rgba(0,0,0,0.4);
-    --transition-fast: 0.2s ease;
-    --transition-med: 0.35s ease;
+    --transition-fast: 0.15s ease;
+    --transition-med: 0.3s ease;
 }
 
 * {
@@ -141,17 +141,21 @@ body {
 
 
 /* Cardinal cells (Reserves + Tableaus) */
-#cell-n { flex-direction: column-reverse; } /* Reserve below Tableau? No, image shows Reserve near Ace. */
-/* Looking at image: Reserve is CLOSER to Ace for Top/Bottom, but Tableaus fan AWAY.
-   Top: Ace -> Reserve -> Tableau (fanning North)
-   Bottom: Ace -> Reserve -> Tableau (fanning South)
-   Left: Ace -> Reserve -> Tableau (fanning West)
-   Right: Ace -> Reserve -> Tableau (fanning East)
-*/
-#cell-n { flex-direction: column-reverse; align-items: center; }
-#cell-s { flex-direction: column; align-items: center; }
-#cell-w { flex-direction: row-reverse; align-items: center; }
-#cell-e { flex-direction: row; align-items: center; }
+#cell-n { flex-direction: column-reverse; align-items: center; } /* Tableau at top, Reserve below */
+#cell-s { flex-direction: column; align-items: center; }         /* Tableau at bottom, Reserve above */
+#cell-w { flex-direction: row-reverse; align-items: center; }    /* Tableau at left, Reserve at right */
+#cell-e { flex-direction: row; align-items: center; }            /* Tableau at right, Reserve at left */
+
+/* Horizontal card orientation for North/South */
+#cell-n .card, #cell-s .card, #cell-n .pile, #cell-s .pile {
+    width: var(--card-height);
+    height: var(--card-width);
+}
+
+#cell-n .card .rank, #cell-s .card .rank {
+    /* Adjust indices for horizontal cards if needed, 
+       but standard indices usually rotate with the card. */
+}
 
 /* ---- Stock Area ---- */
 #stock-area {
@@ -227,29 +231,38 @@ body {
 
 /* Face-up card */
 .card-face {
-    background: #fff;
-    border: 1px solid #bbb;
-    border-radius: var(--card-radius);
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 4px 5px;
+    position: relative;
     width: 100%;
     height: 100%;
+    background: white;
+    border-radius: var(--card-radius);
+    padding: 0;
+    border: 1px solid rgba(0,0,0,0.1);
 }
+
 .card-face .card-corner {
-    font-size: 12px;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    font-size: 13px;
     font-weight: 700;
     line-height: 1;
 }
+
 .card-face .card-corner-bottom {
-    text-align: right;
+    top: auto;
+    left: auto;
+    bottom: 2px;
+    right: 2px;
     transform: rotate(180deg);
 }
+
 .card-face .card-center {
-    font-size: 28px;
-    text-align: center;
-    line-height: 1;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 26px;
 }
 .card.red .card-face { color: #c0392b; }
 .card.black .card-face { color: #1a1a2e; }
@@ -388,10 +401,10 @@ body {
 }
 
 /* ---- Tableau cascade offsets ---- */
-#tableau-0 .card { top: calc(var(--card-index, 0) * -28px); } /* Fan North */
-#tableau-1 .card { top: calc(var(--card-index, 0) * 28px); }  /* Fan South */
-#tableau-2 .card { left: calc(var(--card-index, 0) * -24px); } /* Fan West */
-#tableau-3 .card { left: calc(var(--card-index, 0) * 24px); }  /* Fan East */
+#tableau-0 .card { top: calc(var(--card-index, 0) * -22px); } /* North: Fan UP (Horizontal) */
+#tableau-1 .card { top: calc(var(--card-index, 0) * 22px); }  /* South: Fan DOWN (Horizontal) */
+#tableau-2 .card { left: calc(var(--card-index, 0) * -22px); } /* West: Fan LEFT (Vertical) */
+#tableau-3 .card { left: calc(var(--card-index, 0) * 22px); }  /* East: Fan RIGHT (Vertical) */
 
 /* Ensure cards in fanned tableaus don't overflow their containers too badly */
 .tableau-pile {

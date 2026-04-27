@@ -64,7 +64,7 @@ struct CardView: View {
                 }
             }
         }
-        .frame(width: 70, height: 100)
+        .frame(width: 60, height: 84)
         // 3D flip animation: rotate along Y-axis based on face-up state
         .rotation3DEffect(
             .degrees(card.isFaceUp ? 0 : 180),
