@@ -156,6 +156,7 @@ const game = {
         if (this.currentPhase > 4) return;
 
         this.saveForUndo();
+        const numToDraw = 5 - this.currentPhase;
         const maxStacks = 5 - this.currentPhase;
 
         if (!this.temporaryStacks.length) {
@@ -163,14 +164,13 @@ const game = {
             this.lastDrawStackIndex = -1;
         }
 
-        // Draw 'currentPhase' cards (1 in Phase 1, 4 in Phase 4)
-        for (let i = 0; i < this.currentPhase; i++) {
+        // Draw 'numToDraw' cards and distribute across 'maxStacks'
+        // Since numToDraw == maxStacks, we just give 1 to each stack
+        for (let i = 0; i < numToDraw; i++) {
             if (this.stockpile.length) {
                 const card = this.stockpile.pop();
                 card.faceUp = true;
-                
-                this.lastDrawStackIndex = (this.lastDrawStackIndex + 1) % maxStacks;
-                this.temporaryStacks[this.lastDrawStackIndex].push(card);
+                this.temporaryStacks[i].push(card);
                 this.moveCount++;
             }
         }

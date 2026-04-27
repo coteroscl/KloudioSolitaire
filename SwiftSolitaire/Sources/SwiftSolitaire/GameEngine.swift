@@ -210,20 +210,21 @@ class GameEngine: ObservableObject {
         guard currentPhase <= 4 else { return }
         saveForUndo()
         
+        let drawCount = 5 - currentPhase
         let maxStacks = 5 - currentPhase
+        
         if temporaryStacks.isEmpty {
             temporaryStacks = Array(repeating: [], count: maxStacks)
             lastDrawStackIndex = -1
         }
         
-        // Draw 'currentPhase' cards
-        for _ in 0..<currentPhase {
+        // Draw 'drawCount' cards and distribute across 'maxStacks'
+        // Since drawCount == maxStacks, we just give 1 to each stack
+        for i in 0..<drawCount {
             if !stockpile.isEmpty {
                 var card = stockpile.removeLast()
                 card.isFaceUp = true
-                
-                lastDrawStackIndex = (lastDrawStackIndex + 1) % maxStacks
-                temporaryStacks[lastDrawStackIndex].append(card)
+                temporaryStacks[i].append(card)
                 moveCount += 1
             }
         }
