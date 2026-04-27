@@ -288,10 +288,14 @@ struct DraggablePileView: View {
     var location: PileLocation
     @ObservedObject var engine: GameEngine
     
+    private var isHintSource: Bool {
+        engine.currentHint?.from == location
+    }
+    
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.white.opacity(0.5), lineWidth: 2)
+                .stroke(isHintSource ? Color.cyan : Color.white.opacity(0.5), lineWidth: isHintSource ? 3 : 2)
                 .frame(width: 70, height: 100)
                 .overlay(Text(label).font(.caption).foregroundColor(.white))
             
@@ -361,13 +365,17 @@ struct DropTargetPileView: View {
     var location: PileLocation
     @ObservedObject var engine: GameEngine
     
+    private var isHintTarget: Bool {
+        engine.currentHint?.to == location
+    }
+    
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 8)
-                .stroke(isValidDropTarget ? Color.yellow : Color.white.opacity(0.5), lineWidth: isValidDropTarget ? 3 : 2)
+                .stroke(isValidDropTarget ? Color.yellow : (isHintTarget ? Color.cyan : Color.white.opacity(0.5)), lineWidth: isValidDropTarget || isHintTarget ? 3 : 2)
                 .frame(width: 70, height: 100)
                 .overlay(Text(label).font(.caption).foregroundColor(.white))
-                .background(isValidDropTarget ? Color.yellow.opacity(0.15) : Color.clear)
+                .background(isValidDropTarget ? Color.yellow.opacity(0.15) : (isHintTarget ? Color.cyan.opacity(0.15) : Color.clear))
                 .cornerRadius(8)
             
             if let topCard = cards.last {
@@ -406,13 +414,21 @@ struct DraggableTableauPileView: View {
     var pileIndex: Int
     @ObservedObject var engine: GameEngine
     
+    private var isHintSource: Bool {
+        engine.currentHint?.from == .tableau(pileIndex)
+    }
+    
+    private var isHintTarget: Bool {
+        engine.currentHint?.to == .tableau(pileIndex)
+    }
+    
     var body: some View {
         ZStack {
             // Drop target placeholder
             RoundedRectangle(cornerRadius: 8)
-                .stroke(isValidDropTarget ? Color.yellow : Color.white.opacity(0.5), lineWidth: isValidDropTarget ? 3 : 2)
+                .stroke(isValidDropTarget ? Color.yellow : (isHintTarget || isHintSource ? Color.cyan : Color.white.opacity(0.5)), lineWidth: isValidDropTarget || isHintTarget || isHintSource ? 3 : 2)
                 .frame(width: 70, height: 100)
-                .background(isValidDropTarget ? Color.yellow.opacity(0.15) : Color.clear)
+                .background(isValidDropTarget ? Color.yellow.opacity(0.15) : (isHintTarget ? Color.cyan.opacity(0.15) : Color.clear))
                 .cornerRadius(8)
                 .onTapGesture {
                     // Allow dropping onto an empty tableau

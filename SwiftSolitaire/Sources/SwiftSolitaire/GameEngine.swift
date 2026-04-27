@@ -162,6 +162,7 @@ class GameEngine: ObservableObject {
         restore(from: snapshot)
         canUndo = !undoStack.isEmpty
         canRedo = true
+        currentHint = nil
     }
     
     func redo() {
@@ -170,12 +171,14 @@ class GameEngine: ObservableObject {
         restore(from: snapshot)
         canUndo = true
         canRedo = !redoStack.isEmpty
+        currentHint = nil
     }
     
     // MARK: - Core Actions
     
     func drawCard() {
         saveForUndo()
+        currentHint = nil
         let maxStacks = 5 - currentPhase // Phase 1 -> 4 stacks, Phase 4 -> 1 stack
         
         // Setup initial empty stacks if we're starting a new pass
@@ -276,6 +279,15 @@ class GameEngine: ObservableObject {
     func handleDrop(on target: PileLocation) {
         guard !draggedCards.isEmpty else { return }
         
+        // Prevent dropping onto the exact same pile it came from
+        if target == dragSource {
+            draggedCards.removeAll()
+            dragSource = .none
+            dragOffset = .zero
+            return
+        }
+        
+        currentHint = nil
         var moveSuccessful = false
         
         switch target {
@@ -342,10 +354,11 @@ class GameEngine: ObservableObject {
     
     // MARK: - Auto-Move (Tap-to-Move)
     
-    /// Attempts to automatically move a card to a valid foundation or king pile.
-    /// Returns true if the card was successfully moved.
+    /// Auto-moves a card to a foundation or king pile if possible.
     @discardableResult
     func autoMove(card: Card, from source: PileLocation) -> Bool {
+        currentHint = nil
+        
         // Try center foundation first (Ace piles)
         if canMoveToCenterFoundation(card: card) {
             saveForUndo()
