@@ -4,5 +4,7 @@
 			"path": ".."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"workbench.externalBrowser": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" "
+	}
 }

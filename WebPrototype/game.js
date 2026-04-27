@@ -52,6 +52,7 @@ const game = {
     redoStack: [],
     moveCount: 0,
     startTime: Date.now(),
+    currentHint: null,
 
     startNewGame() {
         this.centralFoundation = [];
@@ -64,6 +65,7 @@ const game = {
         this.redoStack = [];
         this.moveCount = 0;
         this.startTime = Date.now();
+        this.currentHint = null;
 
         const deck = shuffle(createDeck(2));
         let idx = 0;
@@ -109,6 +111,7 @@ const game = {
         this.temporaryStacks = snap.temporaryStacks;
         this.currentPhase = snap.currentPhase;
         this.moveCount = snap.moveCount;
+        this.currentHint = null;
     },
 
     saveForUndo() {
@@ -143,6 +146,7 @@ const game = {
             const total = this.temporaryStacks.reduce((s, st) => s + st.length, 0);
             this.temporaryStacks[total % maxStacks].push(card);
             this.moveCount++;
+            this.currentHint = null;
         } else if (this.currentPhase <= 4) {
             // Consolidate: right to left, flip face-down
             const newStock = [];
@@ -199,7 +203,7 @@ const game = {
         this.moveCount++;
         this.checkAndRefillTableaus();
         this.checkCompletedFoundations();
-        clearHint();
+        this.currentHint = null;
     },
 
     autoMove(card, fromPile, fromType) {
@@ -210,7 +214,7 @@ const game = {
             this.moveCount++;
             this.checkAndRefillTableaus();
             this.checkCompletedFoundations();
-            clearHint();
+            this.currentHint = null;
             return true;
         }
         for (let i = 0; i < 4; i++) {
@@ -221,7 +225,7 @@ const game = {
                 this.moveCount++;
                 this.checkAndRefillTableaus();
                 this.checkCompletedFoundations();
-                clearHint();
+                this.currentHint = null;
                 return true;
             }
         }
@@ -297,35 +301,56 @@ const game = {
             const t = this.tableaus[i];
             if (!t.length) continue;
             const top = t[t.length - 1];
-            if (this.canMoveToCenterFoundation(top))
-                return { from: `tableau-${i}`, to: 'ace-foundation' };
+            if (this.canMoveToCenterFoundation(top)) {
+                this.currentHint = { from: `tableau-${i}`, to: 'ace-foundation' };
+                return this.currentHint;
+            }
             for (let j = 0; j < 4; j++) {
-                if (this.canMoveToKingFoundation(top, j))
-                    return { from: `tableau-${i}`, to: `king-${j}` };
+                if (this.canMoveToKingFoundation(top, j)) {
+                    this.currentHint = { from: `tableau-${i}`, to: `king-${j}` };
+                    return this.currentHint;
+                }
             }
         }
         for (let i = 0; i < this.temporaryStacks.length; i++) {
             const st = this.temporaryStacks[i];
             if (!st.length) continue;
             const top = st[st.length - 1];
-            if (this.canMoveToCenterFoundation(top))
-                return { from: `temp-${i}`, to: 'ace-foundation' };
+            if (this.canMoveToCenterFoundation(top)) {
+                this.currentHint = { from: `temp-${i}`, to: 'ace-foundation' };
+                return this.currentHint;
+            }
             for (let j = 0; j < 4; j++) {
-                if (this.canMoveToKingFoundation(top, j))
-                    return { from: `temp-${i}`, to: `king-${j}` };
-                if (this.canMoveToTableau([top], j))
-                    return { from: `temp-${i}`, to: `tableau-${j}` };
+                if (this.canMoveToKingFoundation(top, j)) {
+                    this.currentHint = { from: `temp-${i}`, to: `king-${j}` };
+                    return this.currentHint;
+                }
+                if (this.canMoveToTableau([top], j)) {
+                    this.currentHint = { from: `temp-${i}`, to: `tableau-${j}` };
+                    return this.currentHint;
+                }
             }
         }
+        // 3. Check tableau-to-tableau moves
         for (let i = 0; i < 4; i++) {
             const t = this.tableaus[i];
             if (!t.length) continue;
             const top = t[t.length - 1];
             for (let j = 0; j < 4; j++) {
-                if (j !== i && this.canMoveToTableau([top], j))
-                    return { from: `tableau-${i}`, to: `tableau-${j}` };
+                if (j !== i && this.canMoveToTableau([top], j)) {
+                    this.currentHint = { from: `tableau-${i}`, to: `tableau-${j}` };
+                    return this.currentHint;
+                }
             }
         }
+        
+        // 4. Check if stockpile can still be drawn
+        if (this.stockpile.length > 0) {
+            this.currentHint = { from: 'stockpile', to: null };
+            return this.currentHint;
+        }
+
+        this.currentHint = null;
         return null;
     }
 };
@@ -437,6 +462,21 @@ function renderAll() {
         document.getElementById('overlay-gameover').classList.remove('hidden');
     }
 
+    // Apply Hints if active
+    document.querySelectorAll('.hint-source, .hint-target').forEach(el => {
+        el.classList.remove('hint-source', 'hint-target');
+    });
+    if (game.currentHint) {
+        if (game.currentHint.from) {
+            const el = document.getElementById(game.currentHint.from);
+            if (el) el.classList.add('hint-source');
+        }
+        if (game.currentHint.to) {
+            const el = document.getElementById(game.currentHint.to);
+            if (el) el.classList.add('hint-target');
+        }
+    }
+
     // Rebind drag events
     bindDragEvents();
 }
@@ -456,6 +496,8 @@ function parsePileId(id) {
     return null;
 }
 
+let clickTimer = null;
+
 function bindDragEvents() {
     // Tableau cards: draggable from any card downward (if valid sequence)
     for (let i = 0; i < 4; i++) {
@@ -467,22 +509,28 @@ function bindDragEvents() {
             const card = pile[cardIndex];
             if (!card || !card.faceUp) return;
 
-            // Double-click to auto-move
-            cardEl.ondblclick = (e) => {
-                e.preventDefault();
-                if (cardIndex === pile.length - 1) {
-                    if (game.autoMove(card, i, 'tableau')) renderAll();
-                }
-            };
-
-            // Drag start
             cardEl.onmousedown = (e) => {
                 if (e.button !== 0) return;
-                const cardsToGrab = pile.slice(cardIndex);
-                if (!game.isValidSequence(cardsToGrab)) return;
-
                 e.preventDefault();
-                startDrag(e, cardsToGrab, i, 'tableau', pileEl, cardIndex);
+
+                if (cardIndex === pile.length - 1) {
+                    if (clickTimer) {
+                        clearTimeout(clickTimer);
+                        clickTimer = null;
+                        if (game.autoMove(card, i, 'tableau')) renderAll();
+                        return;
+                    }
+                    clickTimer = setTimeout(() => {
+                        clickTimer = null;
+                        const cardsToGrab = pile.slice(cardIndex);
+                        if (!game.isValidSequence(cardsToGrab)) return;
+                        startDrag(e, cardsToGrab, i, 'tableau', pileEl, cardIndex);
+                    }, 200);
+                } else {
+                    const cardsToGrab = pile.slice(cardIndex);
+                    if (!game.isValidSequence(cardsToGrab)) return;
+                    startDrag(e, cardsToGrab, i, 'tableau', pileEl, cardIndex);
+                }
             };
         });
     }
@@ -496,15 +544,20 @@ function bindDragEvents() {
         if (!cardEl) return;
         const card = stack[stack.length - 1];
 
-        cardEl.ondblclick = (e) => {
-            e.preventDefault();
-            if (game.autoMove(card, i, 'temp')) renderAll();
-        };
-
         cardEl.onmousedown = (e) => {
             if (e.button !== 0) return;
             e.preventDefault();
-            startDrag(e, [card], i, 'temp', pileEl, stack.length - 1);
+
+            if (clickTimer) {
+                clearTimeout(clickTimer);
+                clickTimer = null;
+                if (game.autoMove(card, i, 'temp')) renderAll();
+                return;
+            }
+            clickTimer = setTimeout(() => {
+                clickTimer = null;
+                startDrag(e, [card], i, 'temp', pileEl, stack.length - 1);
+            }, 200);
         };
     });
 
@@ -556,19 +609,23 @@ function onDragEnd(e) {
     const ghost = document.getElementById('drag-ghost');
     ghost.classList.add('hidden');
 
-    // Find drop target
-    ghost.style.display = 'none';
-    const target = document.elementFromPoint(e.clientX, e.clientY);
-    ghost.style.display = '';
+    // Find drop target by bounds checking all piles
+    const piles = document.querySelectorAll('.pile');
+    let pileEl = null;
+    for (const p of piles) {
+        const rect = p.getBoundingClientRect();
+        if (e.clientX >= rect.left && e.clientX <= rect.right &&
+            e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            pileEl = p;
+            break;
+        }
+    }
 
     let dropped = false;
-    if (target) {
-        const pileEl = target.closest('.pile');
-        if (pileEl && pileEl.dataset.pile) {
-            const parsed = parsePileId(pileEl.dataset.pile);
-            if (parsed) {
-                dropped = tryDrop(parsed, pileEl);
-            }
+    if (pileEl && pileEl.dataset.pile) {
+        const parsed = parsePileId(pileEl.dataset.pile);
+        if (parsed) {
+            dropped = tryDrop(parsed, pileEl);
         }
     }
 
@@ -583,6 +640,9 @@ function onDragEnd(e) {
 function tryDrop(target, targetEl) {
     if (!dragData) return false;
     const { cards, fromPile, fromType } = dragData;
+
+    // Prevent dropping onto the exact same pile it came from
+    if (target.type === fromType && target.index === fromPile) return false;
 
     if (target.type === 'ace' && cards.length === 1 && game.canMoveToCenterFoundation(cards[0])) {
         game.moveCards(cards, fromPile, fromType, 0, 'ace');
@@ -626,20 +686,9 @@ function clearHighlights() {
 // HINT
 // ============================================
 
-function clearHint() {
-    document.querySelectorAll('.hint-source, .hint-target').forEach(el => {
-        el.classList.remove('hint-source', 'hint-target');
-    });
-}
-
 function showHint() {
-    clearHint();
-    const hint = game.findHint();
-    if (!hint) return;
-    const fromEl = document.getElementById(hint.from);
-    const toEl = document.getElementById(hint.to);
-    if (fromEl) fromEl.classList.add('hint-source');
-    if (toEl) toEl.classList.add('hint-target');
+    game.findHint();
+    renderAll();
 }
 
 // ============================================
