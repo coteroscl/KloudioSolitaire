@@ -70,8 +70,55 @@ struct GameView: View {
                 
                 Spacer()
                 
-                // Stockpile and Drawing Row
-                HStack(spacing: 40) {
+                // MARK: - Toolbar (Undo, Redo, Hint, New Game)
+                HStack(spacing: 20) {
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            engine.undo()
+                        }
+                    }) {
+                        VStack {
+                            Image(systemName: "arrow.uturn.backward.circle.fill")
+                                .font(.title2)
+                            Text("Undo")
+                                .font(.caption2)
+                        }
+                        .foregroundColor(engine.canUndo ? .white : .gray)
+                    }
+                    .disabled(!engine.canUndo)
+                    
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            engine.redo()
+                        }
+                    }) {
+                        VStack {
+                            Image(systemName: "arrow.uturn.forward.circle.fill")
+                                .font(.title2)
+                            Text("Redo")
+                                .font(.caption2)
+                        }
+                        .foregroundColor(engine.canRedo ? .white : .gray)
+                    }
+                    .disabled(!engine.canRedo)
+                    
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            engine.findHint()
+                        }
+                    }) {
+                        VStack {
+                            Image(systemName: "lightbulb.fill")
+                                .font(.title2)
+                            Text("Hint")
+                                .font(.caption2)
+                        }
+                        .foregroundColor(.yellow)
+                    }
+                    
+                    Spacer()
+                    
+                    // Stockpile and Drawing Row
                     Button(action: {
                         withAnimation(.easeInOut(duration: 0.3)) {
                             engine.drawCard()
@@ -88,9 +135,25 @@ struct GameView: View {
                         }
                     }
                     
-                    Text(engine.currentPhase <= 4 ? "Phase: \(engine.currentPhase)/4" : "Game Over (No more draws)")
+                    Text(engine.currentPhase <= 4 ? "Phase: \(engine.currentPhase)/4" : "Done")
                         .foregroundColor(.white)
                         .font(.headline)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            engine.startNewGame()
+                        }
+                    }) {
+                        VStack {
+                            Image(systemName: "arrow.counterclockwise.circle.fill")
+                                .font(.title2)
+                            Text("New")
+                                .font(.caption2)
+                        }
+                        .foregroundColor(.white)
+                    }
                 }
             }
             .padding()
@@ -134,6 +197,58 @@ struct GameView: View {
                             .padding(.vertical, 12)
                             .background(Color.blue)
                             .cornerRadius(12)
+                    }
+                }
+                .transition(.scale.combined(with: .opacity))
+            }
+            
+            // MARK: - Game Over Overlay
+            if engine.isGameOver && !engine.isGameWon {
+                Color.black.opacity(0.6)
+                    .edgesIgnoringSafeArea(.all)
+                    .transition(.opacity)
+                
+                VStack(spacing: 20) {
+                    Text("😔 No More Moves")
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    
+                    Text("The game is stuck. Try undoing some moves or start a new game.")
+                        .font(.body)
+                        .foregroundColor(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                    
+                    HStack(spacing: 20) {
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                engine.isGameOver = false
+                                engine.undo()
+                            }
+                        }) {
+                            Text("Undo")
+                                .font(.title3.bold())
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 25)
+                                .padding(.vertical, 10)
+                                .background(Color.orange)
+                                .cornerRadius(10)
+                        }
+                        .disabled(!engine.canUndo)
+                        
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.5)) {
+                                engine.startNewGame()
+                            }
+                        }) {
+                            Text("New Game")
+                                .font(.title3.bold())
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 25)
+                                .padding(.vertical, 10)
+                                .background(Color.blue)
+                                .cornerRadius(10)
+                        }
                     }
                 }
                 .transition(.scale.combined(with: .opacity))

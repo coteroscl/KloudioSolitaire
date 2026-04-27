@@ -9,6 +9,24 @@ enum PileLocation: Equatable {
     case temporaryStack(Int)
 }
 
+/// Represents a hint: a suggested move from one location to another.
+struct Hint: Equatable {
+    let card: Card
+    let from: PileLocation
+    let to: PileLocation
+}
+
+/// A snapshot of the entire game state, used for undo/redo.
+struct GameSnapshot {
+    let centralFoundation: [Card]
+    let kingFoundations: [[Card]]
+    let reserves: [[Card]]
+    let tableaus: [[Card]]
+    let stockpile: [Card]
+    let temporaryStacks: [[Card]]
+    let currentPhase: Int
+}
+
 class GameEngine: ObservableObject {
     // MARK: - Game State
     
@@ -36,6 +54,18 @@ class GameEngine: ObservableObject {
     @Published var dragSource: PileLocation = .none
     @Published var dragOffset: CGSize = .zero
     
+    // MARK: - Undo/Redo State
+    private var undoStack: [GameSnapshot] = []
+    private var redoStack: [GameSnapshot] = []
+    @Published var canUndo: Bool = false
+    @Published var canRedo: Bool = false
+    
+    // MARK: - Hint State
+    @Published var currentHint: Hint? = nil
+    
+    // MARK: - Game Over State
+    @Published var isGameOver: Bool = false
+    
     // MARK: - Initialization
     
     init() {
@@ -50,6 +80,12 @@ class GameEngine: ObservableObject {
         tableaus = Array(repeating: [], count: 4)
         temporaryStacks.removeAll()
         currentPhase = 1
+        undoStack.removeAll()
+        redoStack.removeAll()
+        canUndo = false
+        canRedo = false
+        currentHint = nil
+        isGameOver = false
         
         var deck = Deck(numberOfDecks: 2)
         deck.shuffle()
@@ -82,9 +118,64 @@ class GameEngine: ObservableObject {
         }
     }
     
+    // MARK: - Snapshot Helpers
+    
+    /// Captures the current game state as a snapshot.
+    private func takeSnapshot() -> GameSnapshot {
+        return GameSnapshot(
+            centralFoundation: centralFoundation,
+            kingFoundations: kingFoundations,
+            reserves: reserves,
+            tableaus: tableaus,
+            stockpile: stockpile,
+            temporaryStacks: temporaryStacks,
+            currentPhase: currentPhase
+        )
+    }
+    
+    /// Restores the game state from a snapshot.
+    private func restore(from snapshot: GameSnapshot) {
+        centralFoundation = snapshot.centralFoundation
+        kingFoundations = snapshot.kingFoundations
+        reserves = snapshot.reserves
+        tableaus = snapshot.tableaus
+        stockpile = snapshot.stockpile
+        temporaryStacks = snapshot.temporaryStacks
+        currentPhase = snapshot.currentPhase
+        currentHint = nil
+        isGameOver = false
+    }
+    
+    /// Saves the current state to the undo stack before a mutation.
+    private func saveForUndo() {
+        undoStack.append(takeSnapshot())
+        redoStack.removeAll()
+        canUndo = true
+        canRedo = false
+    }
+    
+    // MARK: - Undo / Redo
+    
+    func undo() {
+        guard let snapshot = undoStack.popLast() else { return }
+        redoStack.append(takeSnapshot())
+        restore(from: snapshot)
+        canUndo = !undoStack.isEmpty
+        canRedo = true
+    }
+    
+    func redo() {
+        guard let snapshot = redoStack.popLast() else { return }
+        undoStack.append(takeSnapshot())
+        restore(from: snapshot)
+        canUndo = true
+        canRedo = !redoStack.isEmpty
+    }
+    
     // MARK: - Core Actions
     
     func drawCard() {
+        saveForUndo()
         let maxStacks = 5 - currentPhase // Phase 1 -> 4 stacks, Phase 4 -> 1 stack
         
         // Setup initial empty stacks if we're starting a new pass
@@ -190,16 +281,19 @@ class GameEngine: ObservableObject {
         switch target {
         case .centerFoundation:
             if draggedCards.count == 1, canMoveToCenterFoundation(card: draggedCards[0]) {
+                saveForUndo()
                 centralFoundation.append(draggedCards[0])
                 moveSuccessful = true
             }
         case .kingFoundation(let index):
             if draggedCards.count == 1, canMoveToKingFoundation(card: draggedCards[0], pileIndex: index) {
+                saveForUndo()
                 kingFoundations[index].append(draggedCards[0])
                 moveSuccessful = true
             }
         case .tableau(let index):
             if canMoveToTableau(cardsToMove: draggedCards, pileIndex: index) {
+                saveForUndo()
                 tableaus[index].append(contentsOf: draggedCards)
                 moveSuccessful = true
             }
@@ -209,8 +303,9 @@ class GameEngine: ObservableObject {
         
         if moveSuccessful {
             removeCardsFromSource()
-            // Check if we need to auto-flip a reserve card
             checkAndRefillEmptyTableaus()
+            checkCompletedFoundations()
+            currentHint = nil
         }
         
         // Reset drag state
@@ -253,20 +348,24 @@ class GameEngine: ObservableObject {
     func autoMove(card: Card, from source: PileLocation) -> Bool {
         // Try center foundation first (Ace piles)
         if canMoveToCenterFoundation(card: card) {
+            saveForUndo()
             centralFoundation.append(card)
             removeCardFromPile(source: source)
             checkAndRefillEmptyTableaus()
             checkCompletedFoundations()
+            currentHint = nil
             return true
         }
         
         // Try each king foundation
         for i in 0..<4 {
             if canMoveToKingFoundation(card: card, pileIndex: i) {
+                saveForUndo()
                 kingFoundations[i].append(card)
                 removeCardFromPile(source: source)
                 checkAndRefillEmptyTableaus()
                 checkCompletedFoundations()
+                currentHint = nil
                 return true
             }
         }
@@ -317,5 +416,105 @@ class GameEngine: ObservableObject {
             stockpile.count +
             temporaryStacks.reduce(0) { $0 + $1.count }
         return totalCardsRemaining == 0
+    }
+    
+    // MARK: - Hint System
+    
+    /// Finds and sets the first valid move as the current hint.
+    func findHint() {
+        // 1. Check tableau top cards -> foundations / king piles
+        for i in 0..<4 {
+            guard let topCard = tableaus[i].last else { continue }
+            if canMoveToCenterFoundation(card: topCard) {
+                currentHint = Hint(card: topCard, from: .tableau(i), to: .centerFoundation)
+                return
+            }
+            for j in 0..<4 {
+                if canMoveToKingFoundation(card: topCard, pileIndex: j) {
+                    currentHint = Hint(card: topCard, from: .tableau(i), to: .kingFoundation(j))
+                    return
+                }
+            }
+        }
+        
+        // 2. Check temporary stack top cards -> foundations / king piles / tableaus
+        for i in 0..<temporaryStacks.count {
+            guard let topCard = temporaryStacks[i].last else { continue }
+            if canMoveToCenterFoundation(card: topCard) {
+                currentHint = Hint(card: topCard, from: .temporaryStack(i), to: .centerFoundation)
+                return
+            }
+            for j in 0..<4 {
+                if canMoveToKingFoundation(card: topCard, pileIndex: j) {
+                    currentHint = Hint(card: topCard, from: .temporaryStack(i), to: .kingFoundation(j))
+                    return
+                }
+            }
+            for j in 0..<4 {
+                if canMoveToTableau(cardsToMove: [topCard], pileIndex: j) {
+                    currentHint = Hint(card: topCard, from: .temporaryStack(i), to: .tableau(j))
+                    return
+                }
+            }
+        }
+        
+        // 3. Check tableau-to-tableau moves
+        for i in 0..<4 {
+            guard let topCard = tableaus[i].last else { continue }
+            for j in 0..<4 where j != i {
+                if canMoveToTableau(cardsToMove: [topCard], pileIndex: j) {
+                    currentHint = Hint(card: topCard, from: .tableau(i), to: .tableau(j))
+                    return
+                }
+            }
+        }
+        
+        // 4. Check if stockpile can still be drawn
+        if !stockpile.isEmpty {
+            currentHint = nil // No card hint, but drawing is still possible
+            return
+        }
+        
+        // No hint found
+        currentHint = nil
+    }
+    
+    // MARK: - Game Over Detection
+    
+    /// Checks if the game is stuck (no valid moves and no draws left).
+    func checkGameOver() {
+        // If stockpile has cards, the game is not over yet
+        if !stockpile.isEmpty { isGameOver = false; return }
+        
+        // If there are still phases left, game is not over
+        if currentPhase <= 4 { isGameOver = false; return }
+        
+        // Check all possible moves
+        // 1. Check tableau cards -> foundations or other tableaus
+        for i in 0..<4 {
+            guard let topCard = tableaus[i].last else { continue }
+            if canMoveToCenterFoundation(card: topCard) { isGameOver = false; return }
+            for j in 0..<4 {
+                if canMoveToKingFoundation(card: topCard, pileIndex: j) { isGameOver = false; return }
+            }
+            for j in 0..<4 where j != i {
+                if canMoveToTableau(cardsToMove: [topCard], pileIndex: j) { isGameOver = false; return }
+            }
+        }
+        
+        // 2. Check temporary stack cards
+        for i in 0..<temporaryStacks.count {
+            guard let topCard = temporaryStacks[i].last else { continue }
+            if canMoveToCenterFoundation(card: topCard) { isGameOver = false; return }
+            for j in 0..<4 {
+                if canMoveToKingFoundation(card: topCard, pileIndex: j) { isGameOver = false; return }
+            }
+            for j in 0..<4 {
+                if canMoveToTableau(cardsToMove: [topCard], pileIndex: j) { isGameOver = false; return }
+            }
+        }
+        
+        // No moves found
+        isGameOver = true
     }
 }

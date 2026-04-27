@@ -57,9 +57,9 @@ Before starting development, note these essential rule corrections derived from 
 1. **✅Win/Loss Detection**:
    - **Win**: All 104 cards successfully played into the 8 completed sequences.
    - **Loss**: No more valid moves available, and the stockpile has been exhausted through all its allowed passes.
-2. **Undo/Redo System**:
+2. **✅Undo/Redo System**:
    - Implement a state stack to allow the player to undo their moves.
-3. **Hint System**:
+3. **✅Hint System**:
    - Add a button that highlights the next possible valid move.
-4. **Game Over UI**:
+4. **✅Game Over UI**:
    - Display a victory screen with stats (time, moves) or a "No More Moves" dialogue.
