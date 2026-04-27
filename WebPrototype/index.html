@@ -33,38 +33,42 @@
 
         <!-- Game Board -->
         <div id="board">
-            <!-- Row 1: North Reserve + Tableau -->
-            <div class="board-cell" id="cell-top-left"></div>
-            <div class="board-cell" id="cell-north">
+            <!-- Row 1: King NW, North Tableau/Reserve, King NE -->
+            <div class="board-cell" id="cell-nw">
+                <div class="pile foundation-pile king-pile" id="king-0" data-pile="king-0" data-label="K"></div>
+            </div>
+            <div class="board-cell" id="cell-n">
                 <div class="pile reserve-pile" id="reserve-0" data-pile="reserve-0"></div>
                 <div class="pile tableau-pile" id="tableau-0" data-pile="tableau-0"></div>
             </div>
-            <div class="board-cell" id="cell-top-right"></div>
-
-            <!-- Row 2: West, Center, East -->
-            <div class="board-cell" id="cell-west">
-                <div class="pile reserve-pile" id="reserve-3" data-pile="reserve-3"></div>
-                <div class="pile tableau-pile" id="tableau-3" data-pile="tableau-3"></div>
-            </div>
-            <div class="board-cell" id="cell-center">
-                <div class="pile foundation-pile king-pile" id="king-0" data-pile="king-0"></div>
-                <div class="pile foundation-pile king-pile" id="king-1" data-pile="king-1"></div>
-                <div class="pile foundation-pile ace-pile" id="ace-foundation" data-pile="ace-foundation"></div>
-                <div class="pile foundation-pile king-pile" id="king-2" data-pile="king-2"></div>
-                <div class="pile foundation-pile king-pile" id="king-3" data-pile="king-3"></div>
-            </div>
-            <div class="board-cell" id="cell-east">
-                <div class="pile tableau-pile" id="tableau-1" data-pile="tableau-1"></div>
-                <div class="pile reserve-pile" id="reserve-1" data-pile="reserve-1"></div>
+            <div class="board-cell" id="cell-ne">
+                <div class="pile foundation-pile king-pile" id="king-1" data-pile="king-1" data-label="K"></div>
             </div>
 
-            <!-- Row 3: South Tableau + Reserve -->
-            <div class="board-cell" id="cell-bottom-left"></div>
-            <div class="board-cell" id="cell-south">
+            <!-- Row 2: West Tableau/Reserve, Ace Center, East Tableau/Reserve -->
+            <div class="board-cell" id="cell-w">
                 <div class="pile tableau-pile" id="tableau-2" data-pile="tableau-2"></div>
                 <div class="pile reserve-pile" id="reserve-2" data-pile="reserve-2"></div>
             </div>
-            <div class="board-cell" id="cell-bottom-right"></div>
+            <div class="board-cell" id="cell-center">
+                <div class="pile foundation-pile ace-pile" id="ace-foundation" data-pile="ace-foundation" data-label="A"></div>
+            </div>
+            <div class="board-cell" id="cell-e">
+                <div class="pile reserve-pile" id="reserve-3" data-pile="reserve-3"></div>
+                <div class="pile tableau-pile" id="tableau-3" data-pile="tableau-3"></div>
+            </div>
+
+            <!-- Row 3: King SW, South Tableau/Reserve, King SE -->
+            <div class="board-cell" id="cell-sw">
+                <div class="pile foundation-pile king-pile" id="king-2" data-pile="king-2" data-label="K"></div>
+            </div>
+            <div class="board-cell" id="cell-s">
+                <div class="pile reserve-pile" id="reserve-1" data-pile="reserve-1"></div>
+                <div class="pile tableau-pile" id="tableau-1" data-pile="tableau-1"></div>
+            </div>
+            <div class="board-cell" id="cell-se">
+                <div class="pile foundation-pile king-pile" id="king-3" data-pile="king-3" data-label="K"></div>
+            </div>
         </div>
 
         <!-- Stockpile Area -->

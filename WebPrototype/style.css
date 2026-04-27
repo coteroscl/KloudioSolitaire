@@ -103,26 +103,42 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--card-gap);
+    gap: 8px; /* Tighter gap between Reserve and Tableau */
 }
 
-/* Center cell: 5 foundation slots (2 kings top, ace center, 2 kings bottom) */
+/* Center cell: Just the Ace foundation */
 #cell-center {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr 1fr;
-    gap: 6px;
+    display: flex;
     align-items: center;
-    justify-items: center;
-    padding: 8px;
-    border: 2px solid rgba(255,255,255,0.08);
-    border-radius: 12px;
-    background: rgba(0,0,0,0.15);
+    justify-content: center;
 }
-#ace-foundation {
-    grid-column: 1 / 3;
-    grid-row: 2;
+
+/* King foundations (Diamonds) */
+.king-pile {
+    transform: rotate(45deg);
+    border: 2px solid var(--gold-dim) !important;
 }
+.king-pile::after {
+    transform: rotate(-45deg) translateX(-50%); /* Rotate text back */
+    bottom: 50%;
+    left: 50%;
+    font-size: 24px;
+    color: var(--gold);
+    opacity: 0.8;
+}
+
+/* Cardinal cells (Reserves + Tableaus) */
+#cell-n { flex-direction: column-reverse; } /* Reserve below Tableau? No, image shows Reserve near Ace. */
+/* Looking at image: Reserve is CLOSER to Ace for Top/Bottom, but Tableaus fan AWAY.
+   Top: Ace -> Reserve -> Tableau (fanning North)
+   Bottom: Ace -> Reserve -> Tableau (fanning South)
+   Left: Ace -> Reserve -> Tableau (fanning West)
+   Right: Ace -> Reserve -> Tableau (fanning East)
+*/
+#cell-n { flex-direction: column-reverse; align-items: center; }
+#cell-s { flex-direction: column; align-items: center; }
+#cell-w { flex-direction: row-reverse; align-items: center; }
+#cell-e { flex-direction: row; align-items: center; }
 
 /* ---- Stock Area ---- */
 #stock-area {
@@ -164,15 +180,21 @@ body {
 .pile::after {
     content: attr(data-label);
     position: absolute;
-    bottom: 4px;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
-    font-size: 9px;
-    color: rgba(255,255,255,0.35);
-    font-weight: 600;
+    transform: translate(-50%, -50%);
+    font-size: 16px;
+    color: rgba(255,255,255,0.25);
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
     pointer-events: none;
+}
+
+#stockpile::after {
+    writing-mode: vertical-lr;
+    transform: translate(-50%, -50%) rotate(180deg);
+    font-size: 10px;
+    letter-spacing: 2px;
 }
 
 /* ---- Card ---- */
@@ -352,8 +374,18 @@ body {
     }
 }
 
-/* ---- Tableau cascade offset ---- */
-.tableau-pile .card {
-    /* JS sets --card-index for each card */
-    top: calc(var(--card-index, 0) * 24px);
+/* ---- Tableau cascade offsets ---- */
+#tableau-0 .card { top: calc(var(--card-index, 0) * -28px); } /* Fan North */
+#tableau-1 .card { top: calc(var(--card-index, 0) * 28px); }  /* Fan South */
+#tableau-2 .card { left: calc(var(--card-index, 0) * -24px); } /* Fan West */
+#tableau-3 .card { left: calc(var(--card-index, 0) * 24px); }  /* Fan East */
+
+/* Ensure cards in fanned tableaus don't overflow their containers too badly */
+.tableau-pile {
+    z-index: 10;
 }
+#cell-n .tableau-pile { margin-top: 60px; }
+#cell-s .tableau-pile { margin-bottom: 60px; }
+#cell-w .tableau-pile { margin-left: 60px; }
+#cell-e .tableau-pile { margin-right: 60px; }
+
