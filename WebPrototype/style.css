@@ -141,10 +141,10 @@ body {
 
 
 /* Cardinal cells (Reserves + Tableaus) */
-#cell-n { flex-direction: column-reverse; align-items: center; } /* Tableau at top, Reserve below */
-#cell-s { flex-direction: column; align-items: center; }         /* Tableau at bottom, Reserve above */
-#cell-w { flex-direction: row-reverse; align-items: center; }    /* Tableau at left, Reserve at right */
-#cell-e { flex-direction: row; align-items: center; }            /* Tableau at right, Reserve at left */
+#cell-n { flex-direction: column-reverse; align-items: center; } /* Tableau top, Reserve middle, Center bottom */
+#cell-s { flex-direction: column; align-items: center; }         /* Center top, Reserve middle, Tableau bottom */
+#cell-w { flex-direction: row; align-items: center; }            /* Tableau left, Reserve middle, Center right */
+#cell-e { flex-direction: row; align-items: center; }            /* Center left, Reserve middle, Tableau right */
 
 /* Horizontal card orientation for North/South */
 #cell-n .card, #cell-s .card, #cell-n .pile, #cell-s .pile {

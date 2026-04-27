@@ -51,6 +51,7 @@ const game = {
     undoStack: [],
     redoStack: [],
     moveCount: 0,
+    lastDrawStackIndex: -1,
     startTime: Date.now(),
     currentHint: null,
 
@@ -64,6 +65,7 @@ const game = {
         this.undoStack = [];
         this.redoStack = [];
         this.moveCount = 0;
+        this.lastDrawStackIndex = -1;
         this.startTime = Date.now();
         this.currentHint = null;
 
@@ -96,9 +98,10 @@ const game = {
             reserves: this.reserves,
             tableaus: this.tableaus,
             stockpile: this.stockpile,
-            temporaryStacks: this.temporaryStacks,
+            temporaryStacks: JSON.parse(JSON.stringify(this.temporaryStacks)),
             currentPhase: this.currentPhase,
-            moveCount: this.moveCount
+            moveCount: this.moveCount,
+            lastDrawStackIndex: this.lastDrawStackIndex
         }));
     },
 
@@ -111,6 +114,7 @@ const game = {
         this.temporaryStacks = snap.temporaryStacks;
         this.currentPhase = snap.currentPhase;
         this.moveCount = snap.moveCount;
+        this.lastDrawStackIndex = snap.lastDrawStackIndex;
         this.currentHint = null;
     },
 
@@ -133,21 +137,8 @@ const game = {
 
     // ---- Drawing ----
     drawCard() {
-        this.saveForUndo();
-        const maxStacks = 5 - this.currentPhase;
-
-        if (!this.temporaryStacks.length && this.currentPhase <= 4) {
-            this.temporaryStacks = Array.from({ length: maxStacks }, () => []);
-        }
-
-        if (this.stockpile.length) {
-            const card = this.stockpile.pop();
-            card.faceUp = true;
-            const total = this.temporaryStacks.reduce((s, st) => s + st.length, 0);
-            this.temporaryStacks[total % maxStacks].push(card);
-            this.moveCount++;
-            this.currentHint = null;
-        } else if (this.currentPhase <= 4) {
+        if (!this.stockpile.length && this.currentPhase <= 4) {
+            this.saveForUndo();
             // Consolidate: right to left, flip face-down
             const newStock = [];
             for (let i = this.temporaryStacks.length - 1; i >= 0; i--) {
@@ -158,7 +149,32 @@ const game = {
             this.stockpile = newStock.reverse();
             this.temporaryStacks = [];
             this.currentPhase++;
+            this.lastDrawStackIndex = -1;
+            return;
         }
+
+        if (this.currentPhase > 4) return;
+
+        this.saveForUndo();
+        const maxStacks = 5 - this.currentPhase;
+
+        if (!this.temporaryStacks.length) {
+            this.temporaryStacks = Array.from({ length: maxStacks }, () => []);
+            this.lastDrawStackIndex = -1;
+        }
+
+        // Draw 'currentPhase' cards (1 in Phase 1, 4 in Phase 4)
+        for (let i = 0; i < this.currentPhase; i++) {
+            if (this.stockpile.length) {
+                const card = this.stockpile.pop();
+                card.faceUp = true;
+                
+                this.lastDrawStackIndex = (this.lastDrawStackIndex + 1) % maxStacks;
+                this.temporaryStacks[this.lastDrawStackIndex].push(card);
+                this.moveCount++;
+            }
+        }
+        this.currentHint = null;
     },
 
     // ---- Validation ----

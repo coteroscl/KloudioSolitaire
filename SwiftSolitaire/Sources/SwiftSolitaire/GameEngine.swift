@@ -25,6 +25,8 @@ struct GameSnapshot {
     let stockpile: [Card]
     let temporaryStacks: [[Card]]
     let currentPhase: Int
+    let moveCount: Int
+    let lastDrawStackIndex: Int
 }
 
 class GameEngine: ObservableObject {
@@ -48,6 +50,8 @@ class GameEngine: ObservableObject {
     
     // Pass tracking (Phase 1 = 4 stacks, Phase 2 = 3 stacks, etc.)
     @Published var currentPhase: Int = 1
+    @Published var moveCount: Int = 0
+    @Published var lastDrawStackIndex: Int = -1
     
     // MARK: - Drag and Drop State
     @Published var draggedCards: [Card] = []
@@ -80,6 +84,8 @@ class GameEngine: ObservableObject {
         tableaus = Array(repeating: [], count: 4)
         temporaryStacks.removeAll()
         currentPhase = 1
+        moveCount = 0
+        lastDrawStackIndex = -1
         undoStack.removeAll()
         redoStack.removeAll()
         canUndo = false
@@ -129,7 +135,9 @@ class GameEngine: ObservableObject {
             tableaus: tableaus,
             stockpile: stockpile,
             temporaryStacks: temporaryStacks,
-            currentPhase: currentPhase
+            currentPhase: currentPhase,
+            moveCount: moveCount,
+            lastDrawStackIndex: lastDrawStackIndex
         )
     }
     
@@ -142,6 +150,8 @@ class GameEngine: ObservableObject {
         stockpile = snapshot.stockpile
         temporaryStacks = snapshot.temporaryStacks
         currentPhase = snapshot.currentPhase
+        moveCount = snapshot.moveCount
+        lastDrawStackIndex = snapshot.lastDrawStackIndex
         currentHint = nil
         isGameOver = false
     }
@@ -177,27 +187,8 @@ class GameEngine: ObservableObject {
     // MARK: - Core Actions
     
     func drawCard() {
-        saveForUndo()
-        currentHint = nil
-        let maxStacks = 5 - currentPhase // Phase 1 -> 4 stacks, Phase 4 -> 1 stack
-        
-        // Setup initial empty stacks if we're starting a new pass
-        if temporaryStacks.isEmpty && currentPhase <= 4 {
-            temporaryStacks = Array(repeating: [], count: maxStacks)
-        }
-        
-        // Find next stack to deal to (left to right, wrapping around)
-        if let card = stockpile.popLast() {
-            var drawnCard = card
-            drawnCard.isFaceUp = true
-            
-            // Figure out which stack to deal onto based on total cards drawn so far this pass
-            let totalCardsInStacks = temporaryStacks.reduce(0) { $0 + $1.count }
-            let targetStackIndex = totalCardsInStacks % maxStacks
-            
-            temporaryStacks[targetStackIndex].append(drawnCard)
-            
-        } else if currentPhase <= 4 {
+        if stockpile.isEmpty && currentPhase <= 4 {
+            saveForUndo()
             // Stockpile is empty, consolidate temporary stacks from right to left
             var newStockpile: [Card] = []
             
@@ -212,7 +203,31 @@ class GameEngine: ObservableObject {
             stockpile = newStockpile.reversed() // maintain correct ordering
             temporaryStacks.removeAll()
             currentPhase += 1
+            lastDrawStackIndex = -1
+            return
         }
+        
+        guard currentPhase <= 4 else { return }
+        saveForUndo()
+        
+        let maxStacks = 5 - currentPhase
+        if temporaryStacks.isEmpty {
+            temporaryStacks = Array(repeating: [], count: maxStacks)
+            lastDrawStackIndex = -1
+        }
+        
+        // Draw 'currentPhase' cards
+        for _ in 0..<currentPhase {
+            if !stockpile.isEmpty {
+                var card = stockpile.removeLast()
+                card.isFaceUp = true
+                
+                lastDrawStackIndex = (lastDrawStackIndex + 1) % maxStacks
+                temporaryStacks[lastDrawStackIndex].append(card)
+                moveCount += 1
+            }
+        }
+        currentHint = nil
     }
     
     // MARK: - Validation Logic

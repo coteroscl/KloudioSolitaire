@@ -22,7 +22,12 @@ The playing area is organized into a cross shape:
     *   **South:** Tableau BELOW Reserve, horizontal, fanning DOWN (visible card bottom).
     *   **East:** Tableau RIGHT of Reserve, vertical, fanning RIGHT (visible card right).
     *   **West:** Tableau LEFT of Reserve, vertical, fanning LEFT (visible card left).
-* **Stockpile:** 52 cards remaining. Phase-based drawing.
+* **Stockpile:** 52 cards remaining. Phase-based drawing:
+    *   **Phase 1:** Draw 1 card at a time.
+    *   **Phase 2:** Draw 2 cards at a time.
+    *   **Phase 3:** Draw 3 cards at a time.
+    *   **Phase 4:** Draw 4 cards at a time (Batch drawing).
+    *   Cards are distributed across temporary stacks (4 in Phase 1, 1 in Phase 4). New draws cover previous ones, making only the top card playable. Once the play is finished, drawing starts again from the left-most pile.
 
 ## 3. Rules of Play
 
