@@ -359,31 +359,47 @@ class GameEngine: ObservableObject {
     func autoMove(card: Card, from source: PileLocation) -> Bool {
         currentHint = nil
         
+        // Ensure we are only auto-moving the top card of the source pile
+        guard let sourcePile = getArrayForLocation(source),
+              let topCard = sourcePile.last,
+              topCard.id == card.id else {
+            return false
+        }
+        
         // Try center foundation first (Ace piles)
-        if canMoveToCenterFoundation(card: card) {
+        if canMoveToCenterFoundation(card: topCard) {
             saveForUndo()
-            centralFoundation.append(card)
+            centralFoundation.append(topCard)
             removeCardFromPile(source: source)
             checkAndRefillEmptyTableaus()
             checkCompletedFoundations()
-            currentHint = nil
             return true
         }
         
-        // Try each king foundation
+        // Try King foundations
         for i in 0..<4 {
-            if canMoveToKingFoundation(card: card, pileIndex: i) {
+            if canMoveToKingFoundation(card: topCard, pileIndex: i) {
                 saveForUndo()
-                kingFoundations[i].append(card)
+                kingFoundations[i].append(topCard)
                 removeCardFromPile(source: source)
                 checkAndRefillEmptyTableaus()
                 checkCompletedFoundations()
-                currentHint = nil
                 return true
             }
         }
         
         return false
+    }
+    
+    private func getArrayForLocation(_ location: PileLocation) -> [Card]? {
+        switch location {
+        case .tableau(let index): return tableaus[index]
+        case .reserve(let index): return reserves[index]
+        case .temporaryStack(let index): return temporaryStacks[index]
+        case .centerFoundation: return centralFoundation
+        case .kingFoundation(let index): return kingFoundations[index]
+        default: return nil
+    }
     }
     
     /// Removes a single card from the top of the specified pile.

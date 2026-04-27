@@ -207,25 +207,21 @@ const game = {
     },
 
     autoMove(card, fromPile, fromType) {
-        if (this.canMoveToCenterFoundation(card)) {
-            this.saveForUndo();
-            this.getArray(fromPile, fromType).pop();
-            this.centralFoundation.push(card);
-            this.moveCount++;
-            this.checkAndRefillTableaus();
-            this.checkCompletedFoundations();
-            this.currentHint = null;
+        this.currentHint = null;
+        const sourceArray = this.getArray(fromPile, fromType);
+        if (!sourceArray.length) return false;
+        
+        // Ensure we are only moving the top card of the pile
+        const topCard = sourceArray[sourceArray.length - 1];
+        if (topCard.id !== card.id) return false;
+
+        if (this.canMoveToCenterFoundation(topCard)) {
+            this.moveCards([topCard], fromPile, fromType, 0, 'ace');
             return true;
         }
         for (let i = 0; i < 4; i++) {
-            if (this.canMoveToKingFoundation(card, i)) {
-                this.saveForUndo();
-                this.getArray(fromPile, fromType).pop();
-                this.kingFoundations[i].push(card);
-                this.moveCount++;
-                this.checkAndRefillTableaus();
-                this.checkCompletedFoundations();
-                this.currentHint = null;
+            if (this.canMoveToKingFoundation(topCard, i)) {
+                this.moveCards([topCard], fromPile, fromType, i, 'king');
                 return true;
             }
         }
