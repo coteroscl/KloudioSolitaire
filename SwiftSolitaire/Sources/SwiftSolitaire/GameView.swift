@@ -27,7 +27,7 @@ struct GameView: View {
                     // Row 1: King 0 (NW), North Tableau/Reserve, King 1 (NE)
                     HStack(spacing: 40) {
                         DropTargetPileView(cards: engine.kingFoundations[0], label: "K", location: .kingFoundation(0), engine: engine)
-                            .rotationEffect(.degrees(45))
+                            .rotationEffect(.degrees(-45))
                         
                         VStack(spacing: 8) {
                             DraggableTableauPileView(cards: engine.tableaus[0], pileIndex: 0, engine: engine, fanDirection: .north)
@@ -56,7 +56,7 @@ struct GameView: View {
                     // Row 3: King 2 (SW), South Tableau/Reserve, King 3 (SE)
                     HStack(spacing: 40) {
                         DropTargetPileView(cards: engine.kingFoundations[2], label: "K", location: .kingFoundation(2), engine: engine)
-                            .rotationEffect(.degrees(45))
+                            .rotationEffect(.degrees(-135))
                         
                         VStack(spacing: 8) {
                             ReservePileView(cards: engine.reserves[1], label: "", location: .reserve(1), engine: engine)
@@ -64,7 +64,7 @@ struct GameView: View {
                         }
                         
                         DropTargetPileView(cards: engine.kingFoundations[3], label: "K", location: .kingFoundation(3), engine: engine)
-                            .rotationEffect(.degrees(45))
+                            .rotationEffect(.degrees(135))
                     }
                 }
                 

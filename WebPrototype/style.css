@@ -113,19 +113,32 @@ body {
     justify-content: center;
 }
 
-/* King foundations (Diamonds) */
+/* King foundations (Diamonds pointing outward) */
 .king-pile {
-    transform: rotate(45deg);
     border: 2px solid var(--gold-dim) !important;
 }
+#king-0 { transform: rotate(-45deg); } /* NW */
+#king-1 { transform: rotate(45deg); }  /* NE */
+#king-2 { transform: rotate(-135deg); } /* SW */
+#king-3 { transform: rotate(135deg); }  /* SE */
+
 .king-pile::after {
-    transform: rotate(-45deg) translateX(-50%); /* Rotate text back */
+    transform: translate(-50%, -50%); /* Don't rotate text back, or maybe we should? */
+    /* If we rotate text back, we need specific transforms for each. 
+       Let's keep text upright if possible. */
     bottom: 50%;
     left: 50%;
     font-size: 24px;
     color: var(--gold);
     opacity: 0.8;
 }
+
+/* Ensure the text inside rotated piles stays upright */
+#king-0::after { transform: translate(-50%, -50%) rotate(45deg); }
+#king-1::after { transform: translate(-50%, -50%) rotate(-45deg); }
+#king-2::after { transform: translate(-50%, -50%) rotate(135deg); }
+#king-3::after { transform: translate(-50%, -50%) rotate(-135deg); }
+
 
 /* Cardinal cells (Reserves + Tableaus) */
 #cell-n { flex-direction: column-reverse; } /* Reserve below Tableau? No, image shows Reserve near Ace. */
