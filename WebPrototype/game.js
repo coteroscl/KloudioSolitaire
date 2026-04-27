@@ -496,8 +496,6 @@ function parsePileId(id) {
     return null;
 }
 
-let clickTimer = null;
-
 function bindDragEvents() {
     // Tableau cards: draggable from any card downward (if valid sequence)
     for (let i = 0; i < 4; i++) {
@@ -509,28 +507,48 @@ function bindDragEvents() {
             const card = pile[cardIndex];
             if (!card || !card.faceUp) return;
 
+            cardEl.ondblclick = (e) => {
+                e.preventDefault();
+                if (cardIndex === pile.length - 1) {
+                    if (game.autoMove(card, i, 'tableau')) renderAll();
+                }
+            };
+
             cardEl.onmousedown = (e) => {
                 if (e.button !== 0) return;
                 e.preventDefault();
 
-                if (cardIndex === pile.length - 1) {
-                    if (clickTimer) {
-                        clearTimeout(clickTimer);
-                        clickTimer = null;
-                        if (game.autoMove(card, i, 'tableau')) renderAll();
-                        return;
+                const cardsToGrab = pile.slice(cardIndex);
+                if (!game.isValidSequence(cardsToGrab)) return;
+
+                let isDragging = false;
+                const startX = e.clientX;
+                const startY = e.clientY;
+
+                const onMove = (moveEv) => {
+                    if (!isDragging) {
+                        const dx = moveEv.clientX - startX;
+                        const dy = moveEv.clientY - startY;
+                        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                            isDragging = true;
+                            startDrag(e, cardsToGrab, i, 'tableau', pileEl, cardIndex);
+                            onDragMove(moveEv);
+                        }
+                    } else {
+                        onDragMove(moveEv);
                     }
-                    clickTimer = setTimeout(() => {
-                        clickTimer = null;
-                        const cardsToGrab = pile.slice(cardIndex);
-                        if (!game.isValidSequence(cardsToGrab)) return;
-                        startDrag(e, cardsToGrab, i, 'tableau', pileEl, cardIndex);
-                    }, 200);
-                } else {
-                    const cardsToGrab = pile.slice(cardIndex);
-                    if (!game.isValidSequence(cardsToGrab)) return;
-                    startDrag(e, cardsToGrab, i, 'tableau', pileEl, cardIndex);
-                }
+                };
+
+                const onUp = (upEv) => {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    if (isDragging) {
+                        onDragEnd(upEv);
+                    }
+                };
+
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
             };
         });
     }
@@ -544,20 +562,43 @@ function bindDragEvents() {
         if (!cardEl) return;
         const card = stack[stack.length - 1];
 
+        cardEl.ondblclick = (e) => {
+            e.preventDefault();
+            if (game.autoMove(card, i, 'temp')) renderAll();
+        };
+
         cardEl.onmousedown = (e) => {
             if (e.button !== 0) return;
             e.preventDefault();
 
-            if (clickTimer) {
-                clearTimeout(clickTimer);
-                clickTimer = null;
-                if (game.autoMove(card, i, 'temp')) renderAll();
-                return;
-            }
-            clickTimer = setTimeout(() => {
-                clickTimer = null;
-                startDrag(e, [card], i, 'temp', pileEl, stack.length - 1);
-            }, 200);
+            let isDragging = false;
+            const startX = e.clientX;
+            const startY = e.clientY;
+
+            const onMove = (moveEv) => {
+                if (!isDragging) {
+                    const dx = moveEv.clientX - startX;
+                    const dy = moveEv.clientY - startY;
+                    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                        isDragging = true;
+                        startDrag(e, [card], i, 'temp', pileEl, stack.length - 1);
+                        onDragMove(moveEv);
+                    }
+                } else {
+                    onDragMove(moveEv);
+                }
+            };
+
+            const onUp = (upEv) => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                if (isDragging) {
+                    onDragEnd(upEv);
+                }
+            };
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
         };
     });
 
@@ -591,9 +632,6 @@ function startDrag(e, cards, fromIndex, fromType, pileEl, startCardIndex) {
 
     // Highlight valid drop targets
     highlightDropTargets(cards);
-
-    document.onmousemove = onDragMove;
-    document.onmouseup = onDragEnd;
 }
 
 function onDragMove(e) {
@@ -603,9 +641,6 @@ function onDragMove(e) {
 }
 
 function onDragEnd(e) {
-    document.onmousemove = null;
-    document.onmouseup = null;
-
     const ghost = document.getElementById('drag-ghost');
     ghost.classList.add('hidden');
 
@@ -630,9 +665,8 @@ function onDragEnd(e) {
     }
 
     clearHighlights();
-    if (!dropped) {
-        // Snap back (just re-render)
-    }
+    
+    // Always clear drag data and re-render to ensure UI consistency
     dragData = null;
     renderAll();
 }
@@ -641,8 +675,10 @@ function tryDrop(target, targetEl) {
     if (!dragData) return false;
     const { cards, fromPile, fromType } = dragData;
 
-    // Prevent dropping onto the exact same pile it came from
-    if (target.type === fromType && target.index === fromPile) return false;
+    // If dropping on source pile, return true (we just won't call moveCards)
+    if (target.type === fromType && target.index === fromPile) {
+        return true;
+    }
 
     if (target.type === 'ace' && cards.length === 1 && game.canMoveToCenterFoundation(cards[0])) {
         game.moveCards(cards, fromPile, fromType, 0, 'ace');

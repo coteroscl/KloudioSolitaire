@@ -182,6 +182,8 @@ body {
     height: var(--card-height);
     border-radius: var(--card-radius);
     cursor: grab;
+    top: 0;
+    left: 0;
     transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
     box-shadow: var(--shadow-card);
     transform-style: preserve-3d;
