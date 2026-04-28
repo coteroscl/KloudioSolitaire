@@ -7,6 +7,7 @@ enum PileLocation: Equatable {
     case centerFoundation
     case kingFoundation(Int)
     case temporaryStack(Int)
+    case stockpile
 }
 
 /// Represents a hint: a suggested move from one location to another.
@@ -69,6 +70,7 @@ class GameEngine: ObservableObject {
     
     // MARK: - Game Over State
     @Published var isGameOver: Bool = false
+    @Published var isGameWon: Bool = false
     
     // MARK: - Initialization
     
@@ -340,6 +342,21 @@ class GameEngine: ObservableObject {
         self.draggedCards = []
         self.dragSource = .none
         self.dragOffset = .zero
+        
+        checkWinCondition()
+        checkGameOver()
+    }
+    
+    /// Checks if all 104 cards have been moved to foundations (and thus cleared).
+    func checkWinCondition() {
+        let totalCards = centralFoundation.count +
+            kingFoundations.reduce(0) { $0 + $1.count } +
+            reserves.reduce(0) { $0 + $1.count } +
+            tableaus.reduce(0) { $0 + $1.count } +
+            stockpile.count +
+            temporaryStacks.reduce(0) { $0 + $1.count }
+        
+        isGameWon = totalCards == 0
     }
     
     /// Removes the successfully moved cards from their original location.
@@ -389,6 +406,8 @@ class GameEngine: ObservableObject {
             removeCardFromPile(source: source)
             checkAndRefillEmptyTableaus()
             checkCompletedFoundations()
+            checkWinCondition()
+            checkGameOver()
             return true
         }
         
@@ -400,6 +419,8 @@ class GameEngine: ObservableObject {
                 removeCardFromPile(source: source)
                 checkAndRefillEmptyTableaus()
                 checkCompletedFoundations()
+                checkWinCondition()
+                checkGameOver()
                 return true
             }
         }
@@ -516,7 +537,8 @@ class GameEngine: ObservableObject {
         
         // 4. Check if stockpile can still be drawn
         if !stockpile.isEmpty {
-            currentHint = nil // No card hint, but drawing is still possible
+            currentHint = Hint(card: Card(suit: .spades, rank: .ace), from: .stockpile, to: .none) 
+            // The card doesn't matter for the stockpile hint, just the location
             return
         }
         

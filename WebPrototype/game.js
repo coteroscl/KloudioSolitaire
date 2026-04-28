@@ -220,6 +220,12 @@ const game = {
         this.checkAndRefillTableaus();
         this.checkCompletedFoundations();
         this.currentHint = null;
+
+        if (this.isGameWon) {
+            document.getElementById('overlay-win').classList.remove('hidden');
+        } else if (this.checkGameOver()) {
+            document.getElementById('overlay-gameover').classList.remove('hidden');
+        }
     },
 
     autoMove(card, fromPile, fromType) {
