@@ -212,10 +212,27 @@ const game = {
     // ---- Move Execution ----
     moveCards(cards, fromPile, fromType, toPile, toType) {
         this.saveForUndo();
-        // Remove from source
-        this.getArray(fromPile, fromType).splice(-cards.length, cards.length);
+        const sourceArray = this.getArray(fromPile, fromType);
+        const targetArray = this.getArray(toPile, toType);
+
+        // Verify source: ensure these specific cards (by ID) are at the end of the source array
+        const cardsToRemoveIds = new Set(cards.map(c => c.id));
+        const actualSourceCards = sourceArray.slice(-cards.length);
+        const match = actualSourceCards.every(c => cardsToRemoveIds.has(c.id));
+
+        if (match) {
+            sourceArray.splice(-cards.length, cards.length);
+        } else {
+            // Fallback: search and remove by ID if they aren't at the very end (safety check)
+            for (const cardToRemove of cards) {
+                const idx = sourceArray.findIndex(c => c.id === cardToRemove.id);
+                if (idx !== -1) sourceArray.splice(idx, 1);
+            }
+        }
+
         // Add to target
-        this.getArray(toPile, toType).push(...cards);
+        targetArray.push(...cards);
+        
         this.moveCount++;
         this.checkAndRefillTableaus();
         this.checkCompletedFoundations();
@@ -407,11 +424,24 @@ function renderPile(el, cards, cascade = false) {
         }
         el.appendChild(cardEl);
     });
-    // Update pile height for cascade
+
+    // Update container size for cascade
+    el.style.minHeight = '';
+    el.style.minWidth = '';
+    
     if (cascade && cards.length > 1) {
-        el.style.minHeight = `${105 + (cards.length - 1) * 24}px`;
-    } else {
-        el.style.minHeight = '';
+        const isHorizontal = el.id.includes('-w') || el.id.includes('-e');
+        const isVertical = el.id.includes('-n') || el.id.includes('-s');
+        
+        if (isVertical) {
+            // Fanning vertically (North/South)
+            // North cards are 84w x 60h. Standard height is 60.
+            el.style.minHeight = `${60 + (cards.length - 1) * 22}px`;
+        } else if (isHorizontal) {
+            // Fanning horizontally (West/East)
+            // West cards are 60w x 84h. Standard width is 60.
+            el.style.minWidth = `${60 + (cards.length - 1) * 22}px`;
+        }
     }
 }
 

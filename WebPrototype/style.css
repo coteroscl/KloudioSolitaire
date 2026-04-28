@@ -141,10 +141,10 @@ body {
 
 
 /* Cardinal cells (Reserves + Tableaus) */
-#cell-n { flex-direction: column-reverse; align-items: center; } /* Tableau top, Reserve middle, Center bottom */
-#cell-s { flex-direction: column; align-items: center; }         /* Center top, Reserve middle, Tableau bottom */
-#cell-w { flex-direction: row; align-items: center; }            /* Tableau left, Reserve middle, Center right */
-#cell-e { flex-direction: row; align-items: center; }            /* Center left, Reserve middle, Tableau right */
+#cell-n { flex-direction: column-reverse; align-items: center; justify-content: flex-start; }
+#cell-s { flex-direction: column; align-items: center; justify-content: flex-start; }
+#cell-w { flex-direction: row; align-items: flex-start; justify-content: flex-end; }
+#cell-e { flex-direction: row; align-items: flex-start; justify-content: flex-start; }
 
 /* Horizontal card orientation for North/South */
 #cell-n .card, #cell-s .card, #cell-n .pile, #cell-s .pile {
@@ -401,17 +401,23 @@ body {
 }
 
 /* ---- Tableau cascade offsets ---- */
-#tableau-0 .card { top: calc(var(--card-index, 0) * -22px); } /* North: Fan UP (Horizontal) */
-#tableau-1 .card { top: calc(var(--card-index, 0) * 22px); }  /* South: Fan DOWN (Horizontal) */
-#tableau-2 .card { left: calc(var(--card-index, 0) * -22px); } /* West: Fan LEFT (Vertical) */
-#tableau-3 .card { left: calc(var(--card-index, 0) * 22px); }  /* East: Fan RIGHT (Vertical) */
+.tableau-pile .card { position: absolute; }
 
-/* Ensure cards in fanned tableaus don't overflow their containers too badly */
+/* North (Fan UP): Cards anchored at bottom, offset upwards */
+#cell-n .tableau-pile .card { bottom: 0; bottom: calc(var(--card-index) * 22px); }
+
+/* South (Fan DOWN): Cards anchored at top, offset downwards */
+#cell-s .tableau-pile .card { top: 0; top: calc(var(--card-index) * 22px); }
+
+/* West (Fan LEFT): Cards anchored at right, offset leftwards */
+#cell-w .tableau-pile .card { right: 0; right: calc(var(--card-index) * 22px); }
+
+/* East (Fan RIGHT): Cards anchored at left, offset rightwards */
+#cell-e .tableau-pile .card { left: 0; left: calc(var(--card-index) * 22px); }
+
+/* Ensure cards in fanned tableaus don't overflow their containers */
 .tableau-pile {
     z-index: 10;
+    position: relative;
 }
-#cell-n .tableau-pile { margin-top: 60px; }
-#cell-s .tableau-pile { margin-bottom: 60px; }
-#cell-w .tableau-pile { margin-left: 60px; }
-#cell-e .tableau-pile { margin-right: 60px; }
 
