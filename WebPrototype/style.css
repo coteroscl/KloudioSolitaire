@@ -147,7 +147,12 @@ body {
 #cell-e { flex-direction: row; align-items: flex-start; justify-content: flex-start; }
 
 /* Horizontal card orientation for North/South */
-#cell-n .card, #cell-s .card, #cell-n .pile, #cell-s .pile {
+#cell-n .card, #cell-s .card {
+    width: var(--card-height);
+    height: var(--card-width);
+}
+
+#cell-n .pile, #cell-s .pile {
     width: var(--card-height);
     height: var(--card-width);
 }
@@ -223,6 +228,7 @@ body {
     cursor: grab;
     top: 0;
     left: 0;
+    touch-action: none; /* Prevents scrolling on iOS while dragging cards */
     transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
     box-shadow: var(--shadow-card);
     transform-style: preserve-3d;
@@ -400,24 +406,46 @@ body {
     }
 }
 
-/* ---- Tableau cascade offsets ---- */
-.tableau-pile .card { position: absolute; }
-
-/* North (Fan UP): Cards anchored at bottom, offset upwards */
-#cell-n .tableau-pile .card { bottom: 0; bottom: calc(var(--card-index) * 22px); }
-
-/* South (Fan DOWN): Cards anchored at top, offset downwards */
-#cell-s .tableau-pile .card { top: 0; top: calc(var(--card-index) * 22px); }
-
-/* West (Fan LEFT): Cards anchored at right, offset leftwards */
-#cell-w .tableau-pile .card { right: 0; right: calc(var(--card-index) * 22px); }
-
-/* East (Fan RIGHT): Cards anchored at left, offset rightwards */
-#cell-e .tableau-pile .card { left: 0; left: calc(var(--card-index) * 22px); }
-
-/* Ensure cards in fanned tableaus don't overflow their containers */
-.tableau-pile {
-    z-index: 10;
+/* ---- Tableau cascade (High-Specificity Flexbox approach) ---- */
+#board .tableau-pile {
+    display: flex !important;
     position: relative;
+    z-index: 10;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: -43px !important;
+    overflow: visible;
+}
+
+/* Force cards in tableaus to follow flex flow by overriding ID-level base styles */
+#board .tableau-pile .card {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    z-index: var(--card-index) !important;
+}
+
+/* North (Fan UP): visible card is index 2 (top) */
+#tableau-0 { flex-direction: column-reverse; }
+
+/* South (Fan DOWN): visible card is index 2 (bottom) */
+#tableau-1 { flex-direction: column; }
+
+/* West (Fan LEFT): visible card is index 2 (left-most) */
+#tableau-2 { flex-direction: row-reverse; }
+
+/* East (Fan RIGHT): visible card is index 2 (right-most) */
+#tableau-3 { flex-direction: row; }
+
+/* Ensure base container size for empty piles */
+.tableau-pile:empty {
+    min-width: var(--card-width);
+    min-height: var(--card-height);
+}
+#cell-n .tableau-pile:empty, #cell-s .tableau-pile:empty {
+    min-width: var(--card-height);
+    min-height: var(--card-width);
 }
 

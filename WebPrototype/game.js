@@ -1,7 +1,3 @@
-/* ============================================
-   Kloudio Solitaire – Web Prototype Game Logic
-   ============================================ */
-
 // ---- Constants ----
 const SUITS = ['hearts', 'diamonds', 'clubs', 'spades'];
 const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
@@ -425,24 +421,7 @@ function renderPile(el, cards, cascade = false) {
         el.appendChild(cardEl);
     });
 
-    // Update container size for cascade
-    el.style.minHeight = '';
-    el.style.minWidth = '';
-    
-    if (cascade && cards.length > 1) {
-        const isHorizontal = el.id.includes('-w') || el.id.includes('-e');
-        const isVertical = el.id.includes('-n') || el.id.includes('-s');
-        
-        if (isVertical) {
-            // Fanning vertically (North/South)
-            // North cards are 84w x 60h. Standard height is 60.
-            el.style.minHeight = `${60 + (cards.length - 1) * 22}px`;
-        } else if (isHorizontal) {
-            // Fanning horizontally (West/East)
-            // West cards are 60w x 84h. Standard width is 60.
-            el.style.minWidth = `${60 + (cards.length - 1) * 22}px`;
-        }
-    }
+    // Cards are positioned via Flexbox in CSS, so we just append them.
 }
 
 function renderAll() {
@@ -562,9 +541,10 @@ function bindDragEvents() {
                 }
             };
 
-            cardEl.onmousedown = (e) => {
-                if (e.button !== 0) return;
-                e.preventDefault();
+            cardEl.onpointerdown = (e) => {
+                // e.button is 0 for touch or left-click
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                cardEl.setPointerCapture(e.pointerId);
 
                 const cardsToGrab = pile.slice(cardIndex);
                 if (!game.isValidSequence(cardsToGrab)) return;
@@ -588,15 +568,16 @@ function bindDragEvents() {
                 };
 
                 const onUp = (upEv) => {
-                    document.removeEventListener('mousemove', onMove);
-                    document.removeEventListener('mouseup', onUp);
+                    cardEl.releasePointerCapture(e.pointerId);
+                    document.removeEventListener('pointermove', onMove);
+                    document.removeEventListener('pointerup', onUp);
                     if (isDragging) {
                         onDragEnd(upEv);
                     }
                 };
 
-                document.addEventListener('mousemove', onMove);
-                document.addEventListener('mouseup', onUp);
+                document.addEventListener('pointermove', onMove);
+                document.addEventListener('pointerup', onUp);
             };
         });
     }
@@ -615,10 +596,11 @@ function bindDragEvents() {
             if (game.autoMove(card, i, 'temp')) renderAll();
         };
 
-        cardEl.onmousedown = (e) => {
-            if (e.button !== 0) return;
-            e.preventDefault();
-
+        cardEl.onpointerdown = (e) => {
+            // e.button is 0 for touch or left-click
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            cardEl.setPointerCapture(e.pointerId);
+            
             let isDragging = false;
             const startX = e.clientX;
             const startY = e.clientY;
@@ -638,15 +620,16 @@ function bindDragEvents() {
             };
 
             const onUp = (upEv) => {
-                document.removeEventListener('mousemove', onMove);
-                document.removeEventListener('mouseup', onUp);
+                cardEl.releasePointerCapture(e.pointerId);
+                document.removeEventListener('pointermove', onMove);
+                document.removeEventListener('pointerup', onUp);
                 if (isDragging) {
                     onDragEnd(upEv);
                 }
             };
 
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
+            document.addEventListener('pointermove', onMove);
+            document.addEventListener('pointerup', onUp);
         };
     });
 
