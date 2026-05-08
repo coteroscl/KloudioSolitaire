@@ -111,7 +111,7 @@ const game = {
         this.currentPhase = snap.currentPhase;
         this.moveCount = snap.moveCount;
         this.lastDrawStackIndex = snap.lastDrawStackIndex;
-        this.currentHint = null;
+        this.currentHints = [];
     },
 
     saveForUndo() {
@@ -170,7 +170,7 @@ const game = {
                 this.moveCount++;
             }
         }
-        this.currentHint = null;
+        this.currentHints = [];
     },
 
     // ---- Validation ----
@@ -232,7 +232,7 @@ const game = {
         this.moveCount++;
         this.checkAndRefillTableaus();
         this.checkCompletedFoundations();
-        this.currentHint = null;
+        this.currentHints = [];
 
         if (this.isGameWon) {
             document.getElementById('overlay-win').classList.remove('hidden');
@@ -242,7 +242,7 @@ const game = {
     },
 
     autoMove(card, fromPile, fromType) {
-        this.currentHint = null;
+        this.currentHints = [];
         const sourceArray = this.getArray(fromPile, fromType);
         if (!sourceArray.length) return false;
         
@@ -328,18 +328,18 @@ const game = {
 
     // ---- Hint ----
     findHint() {
+        this.currentHints = [];
+        
         for (let i = 0; i < 4; i++) {
             const t = this.tableaus[i];
             if (!t.length) continue;
             const top = t[t.length - 1];
             if (this.canMoveToCenterFoundation(top)) {
-                this.currentHint = { from: `tableau-${i}`, to: 'ace-foundation' };
-                return this.currentHint;
+                this.currentHints.push({ from: `tableau-${i}`, to: 'ace-foundation', count: 1, priority: 1 });
             }
             for (let j = 0; j < 4; j++) {
                 if (this.canMoveToKingFoundation(top, j)) {
-                    this.currentHint = { from: `tableau-${i}`, to: `king-${j}` };
-                    return this.currentHint;
+                    this.currentHints.push({ from: `tableau-${i}`, to: `king-${j}`, count: 1, priority: 2 });
                 }
             }
         }
@@ -348,41 +348,65 @@ const game = {
             if (!st.length) continue;
             const top = st[st.length - 1];
             if (this.canMoveToCenterFoundation(top)) {
-                this.currentHint = { from: `temp-${i}`, to: 'ace-foundation' };
-                return this.currentHint;
+                this.currentHints.push({ from: `temp-${i}`, to: 'ace-foundation', count: 1, priority: 1 });
             }
             for (let j = 0; j < 4; j++) {
                 if (this.canMoveToKingFoundation(top, j)) {
-                    this.currentHint = { from: `temp-${i}`, to: `king-${j}` };
-                    return this.currentHint;
+                    this.currentHints.push({ from: `temp-${i}`, to: `king-${j}`, count: 1, priority: 2 });
                 }
                 if (this.canMoveToTableau([top], j)) {
-                    this.currentHint = { from: `temp-${i}`, to: `tableau-${j}` };
-                    return this.currentHint;
+                    this.currentHints.push({ from: `temp-${i}`, to: `tableau-${j}`, count: 1, priority: 3 });
                 }
             }
         }
-        // 3. Check tableau-to-tableau moves
+        
+        // 3. Check tableau-to-tableau moves (including multi-card sequences)
         for (let i = 0; i < 4; i++) {
             const t = this.tableaus[i];
             if (!t.length) continue;
-            const top = t[t.length - 1];
-            for (let j = 0; j < 4; j++) {
-                if (j !== i && this.canMoveToTableau([top], j)) {
-                    this.currentHint = { from: `tableau-${i}`, to: `tableau-${j}` };
-                    return this.currentHint;
+            
+            // Start from the largest possible valid sequence
+            for (let k = 0; k < t.length; k++) {
+                const subSeq = t.slice(k);
+                if (!this.isValidSequence(subSeq)) continue;
+                
+                // Try moving this valid sequence to any other tableau
+                for (let j = 0; j < 4; j++) {
+                    if (j !== i && this.canMoveToTableau(subSeq, j)) {
+                        // Don't suggest moving an entire pile to an empty pile (pointless loop)
+                        if (k === 0 && this.tableaus[j].length === 0) continue;
+                        let movePriority = 4;
+                        
+                        if (k === 0) {
+                            // Moving an ENTIRE pile exposes the reserve card. Very high priority!
+                            movePriority = 3;
+                        } else {
+                            // Moving a partial pile
+                            const oldParent = t[k - 1];
+                            const newParent = this.tableaus[j].length > 0 ? this.tableaus[j][this.tableaus[j].length - 1] : null;
+                            
+                            if (newParent && oldParent.suit === newParent.suit && oldParent.rank === newParent.rank) {
+                                // Pointless move: moving from a Diamond 5 to another Diamond 5. Lowest priority.
+                                movePriority = 6;
+                            } else {
+                                // Useful move: frees up the old parent card for use elsewhere.
+                                movePriority = 4;
+                            }
+                        }
+                        
+                        this.currentHints.push({ from: `tableau-${i}`, to: `tableau-${j}`, count: subSeq.length, priority: movePriority });
+                    }
                 }
             }
         }
         
         // 4. Check if stockpile can still be drawn
-        if (this.stockpile.length > 0) {
-            this.currentHint = { from: 'stockpile', to: null };
-            return this.currentHint;
+        if (this.stockpile.length > 0 && this.currentHints.length === 0) {
+            this.currentHints.push({ from: 'stockpile', to: null, count: 1, priority: 5 });
         }
 
-        this.currentHint = null;
-        return null;
+        this.currentHints.sort((a, b) => a.priority - b.priority);
+        return this.currentHints;
     }
 };
 
@@ -390,23 +414,24 @@ const game = {
 // UI RENDERING
 // ============================================
 
-function createCardEl(card, index = 0) {
+function createCardEl(card, cardIndex = 0) {
     const el = document.createElement('div');
-    el.className = `card ${card.color}`;
-    el.style.setProperty('--card-index', index);
-    el.dataset.cardId = card.id;
+    el.className = `card ${card.color} ${card.faceUp ? 'face-up' : 'face-down'}`;
+    el.id = card.id;
+    el.style.setProperty('--card-index', cardIndex);
 
     if (card.faceUp) {
-        const sym = SUIT_SYMBOLS[card.suit];
+        const rankMap = { 'A': 'ace', 'J': 'jack', 'Q': 'queen', 'K': 'king' };
+        const fileNameRank = rankMap[card.rank] || card.rank;
+        const imgPath = `../assets/Cards/PNG-cards-1.3/${fileNameRank.toLowerCase()}_of_${card.suit.toLowerCase()}.png`;
+        
         el.innerHTML = `
             <div class="card-face">
-                <div class="card-corner">${card.rank}${sym}</div>
-                <div class="card-center">${sym}</div>
-                <div class="card-corner card-corner-bottom">${card.rank}${sym}</div>
-            </div>`;
+                <img src="${imgPath}" alt="${card.rank} of ${card.suit}" style="width: 100%; height: 100%; object-fit: contain;">
+            </div>
+        `;
     } else {
         el.innerHTML = `<div class="card-back"></div>`;
-        el.style.cursor = 'default';
     }
     return el;
 }
@@ -493,15 +518,33 @@ function renderAll() {
     document.querySelectorAll('.hint-source, .hint-target').forEach(el => {
         el.classList.remove('hint-source', 'hint-target');
     });
-    if (game.currentHint) {
-        if (game.currentHint.from) {
-            const el = document.getElementById(game.currentHint.from);
-            if (el) el.classList.add('hint-source');
-        }
-        if (game.currentHint.to) {
-            const el = document.getElementById(game.currentHint.to);
-            if (el) el.classList.add('hint-target');
-        }
+    
+    if (game.currentHints && game.currentHints.length > 0) {
+        game.currentHints.forEach(hint => {
+            if (hint.from) {
+                const pileEl = document.getElementById(hint.from);
+                if (pileEl) {
+                    const cardEls = pileEl.querySelectorAll('.card');
+                    const count = hint.count || 1;
+                    
+                    if (cardEls.length > 0) {
+                        for (let i = Math.max(0, cardEls.length - count); i < cardEls.length; i++) {
+                            cardEls[i].classList.add('hint-source');
+                        }
+                    } else {
+                        pileEl.classList.add('hint-source');
+                    }
+                }
+            }
+            if (hint.to) {
+                const pileEl = document.getElementById(hint.to);
+                if (pileEl) {
+                    const topCard = pileEl.querySelector('.card:last-child');
+                    if (topCard) topCard.classList.add('hint-target');
+                    else pileEl.classList.add('hint-target');
+                }
+            }
+        });
     }
 
     // Rebind drag events
@@ -652,14 +695,41 @@ function startDrag(e, cards, fromIndex, fromType, pileEl, startCardIndex) {
     const ghost = document.getElementById('drag-ghost');
     ghost.innerHTML = '';
     ghost.classList.remove('hidden');
+    
+    let isRotated = false;
+    let offsetProp = 'top';
+    let offsetStep = 22;
+
+    if (fromType === 'tableau') {
+        if (fromIndex === 0) { offsetProp = 'top'; offsetStep = -22; isRotated = true; } // North
+        if (fromIndex === 1) { offsetProp = 'top'; offsetStep = 22; isRotated = true; }  // South
+        if (fromIndex === 2) { offsetProp = 'left'; offsetStep = -22; isRotated = false; } // West
+        if (fromIndex === 3) { offsetProp = 'left'; offsetStep = 22; isRotated = false; }  // East
+    }
+
     cards.forEach((c, i) => {
         const el = createCardEl(c, 0);
-        el.style.position = 'relative';
-        el.style.marginTop = i > 0 ? '-81px' : '0';
+        el.style.position = 'absolute';
+        
+        if (isRotated) {
+            el.style.transform = 'rotate(90deg)';
+        }
+        
+        el.style[offsetProp] = `${i * offsetStep}px`;
+        if (offsetProp === 'top') el.style.left = '0';
+        if (offsetProp === 'left') el.style.top = '0';
+        
         ghost.appendChild(el);
     });
-    ghost.style.left = `${e.clientX - 37}px`;
-    ghost.style.top = `${e.clientY - 20}px`;
+
+    // Center ghost on cursor based on rotation
+    if (isRotated) {
+        ghost.style.left = `${e.clientX - 45}px`;
+        ghost.style.top = `${e.clientY - 32}px`;
+    } else {
+        ghost.style.left = `${e.clientX - 32}px`;
+        ghost.style.top = `${e.clientY - 45}px`;
+    }
 
     // Highlight valid drop targets
     highlightDropTargets(cards);
@@ -667,23 +737,48 @@ function startDrag(e, cards, fromIndex, fromType, pileEl, startCardIndex) {
 
 function onDragMove(e) {
     const ghost = document.getElementById('drag-ghost');
-    ghost.style.left = `${e.clientX - 37}px`;
-    ghost.style.top = `${e.clientY - 20}px`;
+    let isRotated = false;
+    
+    if (dragData && dragData.fromType === 'tableau') {
+        if (dragData.fromPile === 0 || dragData.fromPile === 1) isRotated = true;
+    }
+
+    if (isRotated) {
+        ghost.style.left = `${e.clientX - 45}px`;
+        ghost.style.top = `${e.clientY - 32}px`;
+    } else {
+        ghost.style.left = `${e.clientX - 32}px`;
+        ghost.style.top = `${e.clientY - 45}px`;
+    }
 }
 
 function onDragEnd(e) {
     const ghost = document.getElementById('drag-ghost');
     ghost.classList.add('hidden');
 
-    // Find drop target by bounds checking all piles
-    const piles = document.querySelectorAll('.pile');
+    // Find drop target reliably by checking the DOM element under the cursor
     let pileEl = null;
-    for (const p of piles) {
-        const rect = p.getBoundingClientRect();
-        if (e.clientX >= rect.left && e.clientX <= rect.right &&
-            e.clientY >= rect.top && e.clientY <= rect.bottom) {
-            pileEl = p;
-            break;
+    
+    // Hide ghost temporarily to ensure we don't hit it (even though it has pointer-events: none, it's safer)
+    ghost.style.display = 'none';
+    
+    const targetElement = document.elementFromPoint(e.clientX, e.clientY);
+    if (targetElement) {
+        pileEl = targetElement.closest('.pile');
+    }
+    
+    ghost.style.display = '';
+
+    // Fallback: Check bounding rects of piles if elementFromPoint didn't hit a pile directly (e.g. empty space in flex container)
+    if (!pileEl) {
+        const piles = document.querySelectorAll('.pile');
+        for (const p of piles) {
+            const rect = p.getBoundingClientRect();
+            if (e.clientX >= rect.left && e.clientX <= rect.right &&
+                e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                pileEl = p;
+                break;
+            }
         }
     }
 

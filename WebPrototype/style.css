@@ -3,15 +3,14 @@
    ============================================ */
 
 :root {
-    --felt-dark: #0a3318;
-    --felt-mid: #0e4a22;
-    --felt-light: #12572a;
+    --felt-dark: #073b1e;
+    --felt-mid: #0a4a26;
+    --felt-light: #0d5a2e;
     --card-width: 65px;
     --card-height: 91px;
-    --card-radius: 6px;
-    --card-gap: 12px;
-    --gold: #ffd700;
-    --gold-dim: rgba(255, 215, 0, 0.3);
+    --card-radius: 4px; /* Sharper, cleaner corners */
+    --gold: #fde047;
+    --gold-dim: rgba(253, 224, 71, 0.2);
     --hint-glow: rgba(0, 200, 255, 0.7);
     --shadow-card: 0 2px 6px rgba(0,0,0,0.4);
     --transition-fast: 0.15s ease;
@@ -115,29 +114,18 @@ body {
 
 /* King foundations (Diamonds pointing outward) */
 .king-pile {
-    border: 2px solid var(--gold-dim) !important;
+    border: 1px solid var(--gold-dim) !important;
+    background: rgba(0,0,0,0.1);
 }
-#king-0 { transform: rotate(-45deg); } /* NW */
-#king-1 { transform: rotate(45deg); }  /* NE */
-#king-2 { transform: rotate(-135deg); } /* SW */
-#king-3 { transform: rotate(135deg); }  /* SE */
+#king-0 { transform: rotate(-45deg); }
+#king-1 { transform: rotate(45deg); }
+#king-2 { transform: rotate(-135deg); }
+#king-3 { transform: rotate(135deg); }
 
-.king-pile::after {
-    transform: translate(-50%, -50%); /* Don't rotate text back, or maybe we should? */
-    /* If we rotate text back, we need specific transforms for each. 
-       Let's keep text upright if possible. */
-    bottom: 50%;
-    left: 50%;
-    font-size: 24px;
-    color: var(--gold);
-    opacity: 0.8;
+.ace-pile {
+    border: 1px solid var(--gold) !important;
+    background: rgba(0,0,0,0.1);
 }
-
-/* Ensure the text inside rotated piles stays upright */
-#king-0::after { transform: translate(-50%, -50%) rotate(45deg); }
-#king-1::after { transform: translate(-50%, -50%) rotate(-45deg); }
-#king-2::after { transform: translate(-50%, -50%) rotate(135deg); }
-#king-3::after { transform: translate(-50%, -50%) rotate(-135deg); }
 
 
 /* Cardinal cells (Reserves + Tableaus) */
@@ -145,22 +133,6 @@ body {
 #cell-s { flex-direction: column; align-items: center; justify-content: flex-start; }
 #cell-w { flex-direction: row; align-items: flex-start; justify-content: flex-end; }
 #cell-e { flex-direction: row; align-items: flex-start; justify-content: flex-start; }
-
-/* Horizontal card orientation for North/South */
-#cell-n .card, #cell-s .card {
-    width: var(--card-height);
-    height: var(--card-width);
-}
-
-#cell-n .pile, #cell-s .pile {
-    width: var(--card-height);
-    height: var(--card-width);
-}
-
-#cell-n .card .rank, #cell-s .card .rank {
-    /* Adjust indices for horizontal cards if needed, 
-       but standard indices usually rotate with the card. */
-}
 
 /* ---- Stock Area ---- */
 #stock-area {
@@ -232,6 +204,7 @@ body {
     transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
     box-shadow: var(--shadow-card);
     transform-style: preserve-3d;
+    flex-shrink: 0; /* Prevents compression in flex layouts */
 }
 .card:active { cursor: grabbing; }
 
@@ -273,6 +246,15 @@ body {
 .card.red .card-face { color: #c0392b; }
 .card.black .card-face { color: #1a1a2e; }
 
+/* Hide legacy CSS elements if images are used */
+.card-face .card-corner, .card-face .card-center { display: none !important; }
+
+/* Ensure card images fill the space */
+.card-face img {
+    border-radius: var(--card-radius);
+    display: block;
+}
+
 /* Face-down card */
 .card-back {
     background: linear-gradient(135deg, #1a2a5e, #2d4a8a);
@@ -310,6 +292,9 @@ body {
     animation: cardFlip 0.4s ease-in-out;
 }
 
+/* ---- Utilities ---- */
+.hidden { display: none !important; }
+
 /* ---- Drag Ghost ---- */
 #drag-ghost {
     position: fixed;
@@ -319,7 +304,7 @@ body {
     filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5));
 }
 #drag-ghost .card {
-    position: relative;
+    position: absolute; /* Changed to absolute for dynamic offset stacking */
     cursor: grabbing;
 }
 
@@ -395,15 +380,36 @@ body {
     100% { transform: perspective(600px) rotateY(0deg); }
 }
 
-@keyframes hintPulse {
-    from {
-        box-shadow: 0 0 6px var(--hint-glow);
-        border-color: rgba(0, 200, 255, 0.5);
-    }
-    to {
-        box-shadow: 0 0 18px var(--hint-glow);
-        border-color: rgba(0, 200, 255, 0.9);
-    }
+/* Hint Highlighting */
+.hint-source {
+    animation: hintPulseSource 0.8s infinite alternate !important;
+    z-index: 100 !important; /* Bring to front while hinting */
+}
+
+.hint-target {
+    animation: hintPulseTarget 0.8s infinite alternate !important;
+    z-index: 100 !important;
+}
+
+@keyframes hintPulseSource {
+    from { filter: drop-shadow(0 0 4px #00e5ff) brightness(1); }
+    to { filter: drop-shadow(0 0 16px #00e5ff) brightness(1.15); }
+}
+
+@keyframes hintPulseTarget {
+    from { filter: drop-shadow(0 0 4px #ffea00) brightness(1); border-color: rgba(255, 234, 0, 0.5) !important; }
+    to { filter: drop-shadow(0 0 16px #ffea00) brightness(1.15); border-color: rgba(255, 234, 0, 1) !important; }
+}
+
+/* Drag & Drop Target Highlighting */
+.drop-valid {
+    animation: dropPulse 0.8s infinite alternate !important;
+    z-index: 100 !important;
+}
+
+@keyframes dropPulse {
+    from { filter: drop-shadow(0 0 4px #00ff00) brightness(1); border-color: rgba(0, 255, 0, 0.5) !important; }
+    to { filter: drop-shadow(0 0 16px #00ff00) brightness(1.15); border-color: rgba(0, 255, 0, 1) !important; }
 }
 
 /* ---- Tableau cascade (High-Specificity Flexbox approach) ---- */
@@ -427,25 +433,40 @@ body {
     z-index: var(--card-index) !important;
 }
 
+/* Sideways Orientation for North and South (Physical Rotation) */
+#board #cell-n .card, #board #cell-s .card {
+    width: var(--card-width) !important;  /* Vertical 65px */
+    height: var(--card-height) !important; /* Vertical 91px */
+    transform: rotate(90deg) !important;
+    margin: -13px 0 !important; /* Compensation for 91px box in vertical flex flow */
+}
+
 /* North (Fan UP): visible card is index 2 (top) */
 #tableau-0 { flex-direction: column-reverse; }
+#board #cell-n #tableau-0 .card + .card { margin-bottom: -56px !important; }
 
 /* South (Fan DOWN): visible card is index 2 (bottom) */
 #tableau-1 { flex-direction: column; }
+#board #cell-s #tableau-1 .card + .card { margin-top: -56px !important; }
 
 /* West (Fan LEFT): visible card is index 2 (left-most) */
 #tableau-2 { flex-direction: row-reverse; }
+#tableau-2 .card + .card { margin-right: -43px !important; }
 
 /* East (Fan RIGHT): visible card is index 2 (right-most) */
 #tableau-3 { flex-direction: row; }
+#tableau-3 .card + .card { margin-left: -43px !important; }
 
 /* Ensure base container size for empty piles */
 .tableau-pile:empty {
     min-width: var(--card-width);
     min-height: var(--card-height);
 }
-#cell-n .tableau-pile:empty, #cell-s .tableau-pile:empty {
+#cell-n .tableau-pile:empty, #cell-s .tableau-pile:empty,
+#cell-n .reserve-pile, #cell-s .reserve-pile {
     min-width: var(--card-height);
     min-height: var(--card-width);
+    width: var(--card-height);
+    height: var(--card-width);
 }
 
