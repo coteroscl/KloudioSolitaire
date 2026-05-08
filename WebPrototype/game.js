@@ -46,6 +46,7 @@ const game = {
     currentPhase: 1,
     undoStack: [],
     redoStack: [],
+    lastMove: null,
     moveCount: 0,
     lastDrawStackIndex: -1,
     startTime: Date.now(),
@@ -229,15 +230,24 @@ const game = {
         // Add to target
         targetArray.push(...cards);
         
-        this.moveCount++;
-        this.checkAndRefillTableaus();
-        this.checkCompletedFoundations();
-        this.currentHints = [];
-
+        this.lastMove = { from: fromPile, to: toPile, count: cards.length };
+        this.currentHints = []; // Clear hints after a move is made
+        
         if (this.isGameWon) {
             document.getElementById('overlay-win').classList.remove('hidden');
         } else if (this.checkGameOver()) {
             document.getElementById('overlay-gameover').classList.remove('hidden');
+        }
+    },
+
+    flipReserve(idx) {
+        if (this.tableaus[idx].length === 0 && this.reserves[idx].length > 0) {
+            this.saveForUndo();
+            const card = this.reserves[idx].pop();
+            card.faceUp = true;
+            this.tableaus[idx].push(card);
+            this.moveCount++;
+            renderAll();
         }
     },
 
@@ -272,20 +282,10 @@ const game = {
         return [];
     },
 
-    checkAndRefillTableaus() {
-        for (let i = 0; i < 4; i++) {
-            if (!this.tableaus[i].length && this.reserves[i].length) {
-                const card = this.reserves[i].pop();
-                card.faceUp = true;
-                this.tableaus[i].push(card);
-            }
-        }
-    },
-
     checkCompletedFoundations() {
-        if (this.centralFoundation.length === 13) this.centralFoundation = [];
-        for (let i = 0; i < 4; i++) {
-            if (this.kingFoundations[i].length === 13) this.kingFoundations[i] = [];
+        if (this.centralFoundation.length === 13) {
+            // Sequence complete: in Kloudio, they stay until the end or are set aside.
+            // For now, we'll keep them to allow foundation-to-tableau moves.
         }
     },
 
@@ -320,6 +320,15 @@ const game = {
             if (this.canMoveToCenterFoundation(top)) return false;
             for (let j = 0; j < 4; j++) {
                 if (this.canMoveToKingFoundation(top, j)) return false;
+                if (this.canMoveToTableau([top], j)) return false;
+            }
+        }
+        // Also check if foundation cards can move to tableaus (Rule 4)
+        const foundations = [this.centralFoundation, ...this.kingFoundations];
+        for (const f of foundations) {
+            if (!f.length) continue;
+            const top = f[f.length - 1];
+            for (let j = 0; j < 4; j++) {
                 if (this.canMoveToTableau([top], j)) return false;
             }
         }
@@ -359,6 +368,26 @@ const game = {
                 }
             }
         }
+
+        // 2.5 Check foundation-to-tableau moves (Rule 4) - VERY LOW priority
+        if (this.centralFoundation.length > 0) {
+            const top = this.centralFoundation[this.centralFoundation.length - 1];
+            for (let j = 0; j < 4; j++) {
+                if (this.canMoveToTableau([top], j)) {
+                    this.currentHints.push({ from: 'ace-foundation', to: `tableau-${j}`, count: 1, priority: 8 });
+                }
+            }
+        }
+        for (let i = 0; i < 4; i++) {
+            const kf = this.kingFoundations[i];
+            if (!kf.length) continue;
+            const top = kf[kf.length - 1];
+            for (let j = 0; j < 4; j++) {
+                if (this.canMoveToTableau([top], j)) {
+                    this.currentHints.push({ from: `king-${i}`, to: `tableau-${j}`, count: 1, priority: 8 });
+                }
+            }
+        }
         
         // 3. Check tableau-to-tableau moves (including multi-card sequences)
         for (let i = 0; i < 4; i++) {
@@ -375,23 +404,34 @@ const game = {
                     if (j !== i && this.canMoveToTableau(subSeq, j)) {
                         // Don't suggest moving an entire pile to an empty pile (pointless loop)
                         if (k === 0 && this.tableaus[j].length === 0) continue;
-                        let movePriority = 4;
                         
+                        let movePriority = 4;
+                        const newParent = this.tableaus[j].length > 0 ? this.tableaus[j][this.tableaus[j].length - 1] : null;
+
+                        // Loop Prevention: Don't suggest moving back exactly where we just came from
+                        if (this.lastMove && 
+                            this.lastMove.to === `tableau-${i}` && 
+                            this.lastMove.from === `tableau-${j}` && 
+                            this.lastMove.count === subSeq.length) {
+                            continue;
+                        }
+
                         if (k === 0) {
-                            // Moving an ENTIRE pile exposes the reserve card. Very high priority!
+                            // Moving an ENTIRE pile exposes the possibility of a reserve flip.
                             movePriority = 3;
                         } else {
                             // Moving a partial pile
                             const oldParent = t[k - 1];
-                            const newParent = this.tableaus[j].length > 0 ? this.tableaus[j][this.tableaus[j].length - 1] : null;
-                            
                             if (newParent && oldParent.suit === newParent.suit && oldParent.rank === newParent.rank) {
-                                // Pointless move: moving from a Diamond 5 to another Diamond 5. Lowest priority.
-                                movePriority = 6;
-                            } else {
-                                // Useful move: frees up the old parent card for use elsewhere.
-                                movePriority = 4;
+                                // Pointless move? Check if it unblocks oldParent for a Foundation!
+                                if (this.canMoveToCenterFoundation(oldParent) || 
+                                    this.kingFoundations.some((_, idx) => this.canMoveToKingFoundation(oldParent, idx))) {
+                                    movePriority = 1; // High priority "Parking" move to unblock Foundation
+                                } else {
+                                    continue; // Truly pointless
+                                }
                             }
+                            movePriority = 4;
                         }
                         
                         this.currentHints.push({ from: `tableau-${i}`, to: `tableau-${j}`, count: subSeq.length, priority: movePriority });
@@ -403,6 +443,21 @@ const game = {
         // 4. Check if stockpile can still be drawn
         if (this.stockpile.length > 0 && this.currentHints.length === 0) {
             this.currentHints.push({ from: 'stockpile', to: null, count: 1, priority: 5 });
+        }
+
+        // 5. Check for Consolidation (Issue 7)
+        if (this.stockpile.length === 0 && this.temporaryStacks.some(s => s.length > 0)) {
+            // Suggest consolidation if no foundation moves are available
+            if (!this.currentHints.some(h => h.priority <= 2)) {
+                this.currentHints.push({ from: 'stockpile', to: null, count: 1, priority: 0 });
+            }
+        }
+
+        // 6. Check if reserves can be flipped
+        for (let i = 0; i < 4; i++) {
+            if (this.tableaus[i].length === 0 && this.reserves[i].length > 0) {
+                this.currentHints.push({ from: `reserve-${i}`, to: `tableau-${i}`, count: 1, priority: 0 });
+            }
         }
 
         this.currentHints.sort((a, b) => a.priority - b.priority);
@@ -453,32 +508,29 @@ function renderAll() {
     // Reserves
     for (let i = 0; i < 4; i++) {
         const el = document.getElementById(`reserve-${i}`);
-        el.dataset.label = `Reserve (${game.reserves[i].length})`;
+        el.onclick = () => { game.flipReserve(i); };
+        el.style.cursor = game.tableaus[i].length === 0 && game.reserves[i].length > 0 ? 'pointer' : 'default';
         renderPile(el, game.reserves[i]);
     }
 
     // Tableaus
     for (let i = 0; i < 4; i++) {
         const el = document.getElementById(`tableau-${i}`);
-        el.dataset.label = '';
         renderPile(el, game.tableaus[i], true);
     }
 
     // Ace foundation
     const aceEl = document.getElementById('ace-foundation');
-    aceEl.dataset.label = 'ACE';
     renderPile(aceEl, game.centralFoundation);
 
     // King foundations
     for (let i = 0; i < 4; i++) {
         const kEl = document.getElementById(`king-${i}`);
-        kEl.dataset.label = 'KING';
         renderPile(kEl, game.kingFoundations[i]);
     }
 
     // Stockpile
     const stockEl = document.getElementById('stockpile');
-    stockEl.dataset.label = `Stock (${game.stockpile.length})`;
     renderPile(stockEl, game.stockpile);
 
     // Temporary stacks
@@ -520,7 +572,11 @@ function renderAll() {
     });
     
     if (game.currentHints && game.currentHints.length > 0) {
-        game.currentHints.forEach(hint => {
+        // Show ALL hints that share the highest priority level (Issue 6 Refinement)
+        const topPriority = game.currentHints[0].priority;
+        const bestHints = game.currentHints.filter(h => h.priority === topPriority);
+
+        bestHints.forEach(hint => {
             if (hint.from) {
                 const pileEl = document.getElementById(hint.from);
                 if (pileEl) {
@@ -655,6 +711,61 @@ function bindDragEvents() {
                     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
                         isDragging = true;
                         startDrag(e, [card], i, 'temp', pileEl, stack.length - 1);
+                        onDragMove(moveEv);
+                    }
+                } else {
+                    onDragMove(moveEv);
+                }
+            };
+
+            const onUp = (upEv) => {
+                cardEl.releasePointerCapture(e.pointerId);
+                document.removeEventListener('pointermove', onMove);
+                document.removeEventListener('pointerup', onUp);
+                if (isDragging) {
+                    onDragEnd(upEv);
+                }
+            };
+
+            document.addEventListener('pointermove', onMove);
+            document.addEventListener('pointerup', onUp);
+        };
+    });
+
+    // Foundation and King Piles: draggable if not empty (Rule 4)
+    const foundationPiles = [
+        { el: document.getElementById('ace-foundation'), type: 'ace', index: 0 },
+        { el: document.getElementById('king-0'), type: 'king', index: 0 },
+        { el: document.getElementById('king-1'), type: 'king', index: 1 },
+        { el: document.getElementById('king-2'), type: 'king', index: 2 },
+        { el: document.getElementById('king-3'), type: 'king', index: 3 }
+    ];
+
+    foundationPiles.forEach(pileObj => {
+        const pileEl = pileObj.el;
+        if (!pileEl) return;
+        const pileArray = game.getArray(pileObj.index, pileObj.type);
+        if (!pileArray.length) return;
+
+        const cardEl = pileEl.querySelector('.card:last-child');
+        if (!cardEl) return;
+        const card = pileArray[pileArray.length - 1];
+
+        cardEl.onpointerdown = (e) => {
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            cardEl.setPointerCapture(e.pointerId);
+
+            let isDragging = false;
+            const startX = e.clientX;
+            const startY = e.clientY;
+
+            const onMove = (moveEv) => {
+                if (!isDragging) {
+                    const dx = moveEv.clientX - startX;
+                    const dy = moveEv.clientY - startY;
+                    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                        isDragging = true;
+                        startDrag(e, [card], pileObj.index, pileObj.type, pileEl, pileArray.length - 1);
                         onDragMove(moveEv);
                     }
                 } else {

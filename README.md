@@ -38,9 +38,9 @@ The playing area is organized into a cross shape:
 * **Refilling from Reserves:** When a Tableau pile is empty, you can flip the top card of its corresponding face-down Reserve pile to fill the space and make that card available for play.
 
 ### 3.2 Building Foundations and King Piles
-* **Central Foundation:** When an Ace is available, it can be moved to the center to start a new pile. Build upwards in the same suit. Once the sequence is finished (King is placed), the pile is removed from the board, freeing the central spot for a new Ace.
-* **King Piles:** When a King is available, it can be moved to one of the four empty corner spots. Build downwards in the same suit. Once finished (Ace is placed), the pile is removed, freeing the spot.
-* **Strategic Choice:** When both an Ace sequence and a King sequence of the same suit are active, you can choose whether to play an available card onto the ascending or descending pile.
+* **Building Foundations:** When an Ace or King is available, it can be moved to its respective foundation. Once a sequence is completed (Ace to King or King to Ace), it is set aside.
+* **Playable Foundations:** The top card of any active Central Foundation or King Pile is playable back onto the Tableau if it follows the tableau building rules (opposite color, descending rank). This allows for strategic repositioning of cards already in foundations.
+* **Refilling from Reserves:** When a Tableau pile is empty, you must manually click the corresponding face-down Reserve pile to flip and play its top card into the empty slot. This is a critical strategic decision.
 
 ### 3.3 Drawing from the Stockpile
 * **Drawing:** The Stockpile is drawn through in four distinct phases, forming temporary face-up stacks side-by-side. 
