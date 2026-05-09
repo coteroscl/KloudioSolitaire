@@ -518,3 +518,72 @@ body {
         box-shadow: 0 0 30px rgba(255, 255, 255, 1);
     }
 }
+
+/* Vintage Game Over Styles */
+#overlay-vintage-gameover {
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+}
+
+.vintage-frame {
+    background: #f4ecd8; /* Aged parchment */
+    padding: 40px;
+    border: 12px double #5d4037;
+    box-shadow: 0 0 50px rgba(0,0,0,0.5), inset 0 0 100px rgba(93, 64, 55, 0.2);
+    max-width: 500px;
+    text-align: center;
+    position: relative;
+    color: #3e2723;
+    font-family: 'Georgia', serif;
+}
+
+.vintage-content {
+    border: 1px solid #8d6e63;
+    padding: 20px;
+}
+
+.vintage-title {
+    font-size: 3rem;
+    margin: 0;
+    font-variant: small-caps;
+    letter-spacing: 4px;
+    color: #b71c1c; /* Crimson */
+    text-shadow: 1px 1px 0px #fff;
+}
+
+.vintage-divider {
+    height: 2px;
+    background: linear-gradient(to right, transparent, #5d4037, transparent);
+    margin: 20px 0;
+}
+
+.vintage-text {
+    font-size: 1.2rem;
+    line-height: 1.6;
+    font-style: italic;
+    margin-bottom: 20px;
+}
+
+.vintage-subtext {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin-bottom: 30px;
+}
+
+.vintage-btn {
+    background: #5d4037;
+    color: #f4ecd8;
+    border: none;
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    font-family: 'Georgia', serif;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 3px 3px 10px rgba(0,0,0,0.3);
+}
+
+.vintage-btn:hover {
+    background: #3e2723;
+    transform: scale(1.05);
+    box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
+}

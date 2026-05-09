@@ -428,16 +428,22 @@ const game = {
                         } else {
                             // Moving a partial pile
                             const oldParent = t[k - 1];
-                            if (newParent && oldParent.suit === newParent.suit && oldParent.rank === newParent.rank) {
-                                // Pointless move? Check if it unblocks oldParent for a Foundation!
-                                if (this.canMoveToCenterFoundation(oldParent) || 
-                                    this.kingFoundations.some((_, idx) => this.canMoveToKingFoundation(oldParent, idx))) {
-                                    movePriority = 1; // High priority "Parking" move to unblock Foundation
+                            if (newParent && oldParent.rank === newParent.rank && oldParent.color === newParent.color) {
+                                // Lateral Move Check - Issue 2 Refinement
+                                if (k === 0) {
+                                    movePriority = 5; // Low priority, but keeps space management
                                 } else {
-                                    continue; // Truly pointless
+                                    continue; // Skip pointless partial lateral moves
                                 }
                             }
-                            movePriority = 4;
+                            
+                            // Check for Foundation Unblocking ("Parking")
+                            if (this.canMoveToCenterFoundation(oldParent) || 
+                                [0, 1, 2, 3].some(idx => this.canMoveToKingFoundation(oldParent, idx))) {
+                                movePriority = 1;
+                            } else {
+                                movePriority = 4;
+                            }
                         }
                         
                         this.currentHints.push({ from: `tableau-${i}`, to: `tableau-${j}`, count: subSeq.length, priority: movePriority });
@@ -499,17 +505,32 @@ function createCardEl(card, cardIndex = 0) {
 
 function renderPile(el, cards, cascade = false) {
     el.innerHTML = '';
+    
+    // Dynamic Fanning ('The Squish') - Issue 3
+    let overlap = 25; // Default overlap in pixels
+    if (cascade && cards.length > 6) {
+        overlap = Math.max(10, 150 / cards.length); // Squish more as pile grows
+    }
+
     cards.forEach((card, i) => {
         const isTop = i === cards.length - 1;
         let cardEl;
         
-        // Integrated Peek Logic (Issue Fix)
+        // Integrated Peek Logic
         if (card.isPeeked && isTop) {
             const peekedCard = { ...card, faceUp: true };
             cardEl = createCardEl(peekedCard, cascade ? i : 0);
             cardEl.classList.add('peek-reveal');
         } else {
             cardEl = createCardEl(card, cascade ? i : 0);
+        }
+
+        if (cascade && i > 0) {
+            const pileId = el.id;
+            if (pileId === 'tableau-0') cardEl.style.marginTop = `-${overlap}px`; // North (fans up)
+            if (pileId === 'tableau-1') cardEl.style.marginTop = `${overlap}px`;  // South (fans down)
+            if (pileId === 'tableau-2') cardEl.style.marginLeft = `${overlap}px`; // East (fans right)
+            if (pileId === 'tableau-3') cardEl.style.marginLeft = `-${overlap}px`; // West (fans left)
         }
 
         if (!cascade && i < cards.length - 1) {
@@ -582,7 +603,11 @@ function renderAll() {
             `Moves: ${game.moveCount} | Time: ${mins}m ${secs}s`;
         document.getElementById('overlay-win').classList.remove('hidden');
     } else if (game.hasStarted && game.checkGameOver()) {
-        document.getElementById('overlay-gameover').classList.remove('hidden');
+        if (game.currentPhase >= 4 && game.stockpile.length === 0) {
+            document.getElementById('overlay-vintage-gameover').classList.remove('hidden');
+        } else {
+            document.getElementById('overlay-gameover').classList.remove('hidden');
+        }
     }
 
     // Apply Hints if active
@@ -665,7 +690,16 @@ function bindDragEvents() {
                 cardEl.setPointerCapture(e.pointerId);
 
                 const cardsToGrab = pile.slice(cardIndex);
-                if (!game.isValidSequence(cardsToGrab)) return;
+                // Sequence Drag Fix - Issue 1
+                if (!game.isValidSequence(cardsToGrab)) {
+                    // Fallback: If clicking a card that isn't head of a sequence, 
+                    // check if user intended to just grab the top-most card
+                    if (cardIndex === pile.length - 1) {
+                        // Grab single card
+                    } else {
+                        return; 
+                    }
+                }
 
                 let isDragging = false;
                 const startX = e.clientX;
