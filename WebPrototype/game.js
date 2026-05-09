@@ -35,6 +35,45 @@ function shuffle(arr) {
     return arr;
 }
 
+function winnableShuffle(deck) {
+    // 1. Extract all Aces and some 2s to ensure a strong start
+    const aces = deck.filter(c => c.rank === 'A');
+    const twos = deck.filter(c => c.rank === '2');
+    const rest = deck.filter(c => c.rank !== 'A' && c.rank !== '2');
+    
+    shuffle(rest);
+    
+    // 2. We have 4 Tableaus, 8 Foundations (4 Ace, 4 King)
+    // Let's put 4 Aces in the first 4 Tableau spots or early Stockpile
+    const winnableDeck = [];
+    
+    // Deal 4 Aces to the Tableaus initially
+    for (let i = 0; i < 4; i++) {
+        winnableDeck.push(aces.pop());
+    }
+    
+    // Fill the rest of the Tableaus (8 more cards for the 3-per-tableau deal)
+    for (let i = 0; i < 8; i++) {
+        winnableDeck.push(rest.pop());
+    }
+    
+    // Now fill Reserves (40 cards)
+    for (let i = 0; i < 40; i++) {
+        winnableDeck.push(rest.pop());
+    }
+    
+    // Put some Twos and the remaining Aces in the early Stockpile (next 12 cards)
+    for (let i = 0; i < 4; i++) {
+        if (aces.length) winnableDeck.push(aces.pop());
+        if (twos.length) winnableDeck.push(twos.pop());
+    }
+    
+    // Append the rest
+    winnableDeck.push(...aces, ...twos, ...rest);
+    
+    return winnableDeck;
+}
+
 // ---- Game Engine ----
 const game = {
     centralFoundation: [],
@@ -71,7 +110,8 @@ const game = {
         this.peeksLeft = 3;
         this.isPeekActive = false;
 
-        const deck = shuffle(createDeck(2));
+        // Use the new Winnable Shuffle logic for testing
+        const deck = winnableShuffle(createDeck(2));
         let idx = 0;
 
         // Deal reserves (10 face-down each)
@@ -306,6 +346,28 @@ const game = {
         return total === 0;
     },
 
+    // ---- Win / Game Over / Strategic Logic ----
+    isPeekAllowed() {
+        if (this.peeksLeft <= 0) return false;
+        
+        // Condition 1: Multiple strategic choices
+        this.findHint();
+        const multipleMoves = this.currentHints.length >= 2;
+        
+        // Condition 2: Choice between a move and a hidden Reserve
+        const hasEmptyTableau = this.tableaus.some(t => t.length === 0);
+        const hasReserves = this.reserves.some(r => r.length > 0);
+        
+        // Decision Required: If we have an empty space AND at least one other move OR the choice to flip a reserve.
+        if (hasEmptyTableau && (multipleMoves || hasReserves)) return true;
+        
+        // If we have multiple moves from different source types (e.g. Stock vs Tableau)
+        const sourceTypes = new Set(this.currentHints.map(h => h.from.split('-')[0]));
+        if (sourceTypes.size >= 2 || multipleMoves) return true;
+
+        return false;
+    },
+
     checkGameOver() {
         if (this.stockpile.length || this.currentPhase <= 4) return false;
         // Check all possible moves
@@ -516,8 +578,8 @@ function renderPile(el, cards, cascade = false) {
         const isTop = i === cards.length - 1;
         let cardEl;
         
-        // Integrated Peek Logic
-        if (card.isPeeked && isTop) {
+        // Integrated Peek Logic (Supports Batch Reveal - Issue 4)
+        if (card.isPeeked) {
             const peekedCard = { ...card, faceUp: true };
             cardEl = createCardEl(peekedCard, cascade ? i : 0);
             cardEl.classList.add('peek-reveal');
@@ -585,10 +647,17 @@ function renderAll() {
     document.getElementById('phase-display').textContent =
         game.currentPhase <= 4 ? `Phase: ${game.currentPhase}/4` : 'All Phases Done';
 
-    // Peek count
+    // Peek count & state
     document.getElementById('peek-count').textContent = game.peeksLeft;
     document.getElementById('btn-peek').classList.toggle('active', game.isPeekActive);
-    document.getElementById('btn-peek').disabled = game.peeksLeft <= 0;
+    document.getElementById('btn-peek').disabled = !game.isPeekAllowed();
+    
+    // Add visual 'Choice' indicator to peek button if it just became active
+    if (!document.getElementById('btn-peek').disabled) {
+        document.getElementById('btn-peek').title = "Strategic Fork Detected: Peek is available.";
+    } else {
+        document.getElementById('btn-peek').title = "No strategic choice required right now.";
+    }
 
     // Toolbar buttons
     document.getElementById('btn-undo').disabled = !game.undoStack.length;
@@ -1060,21 +1129,40 @@ document.getElementById('btn-new').onclick = () => { game.startNewGame(); render
 
 function handlePileClick(pileId) {
     let pile = null;
+    let isStock = false;
     if (pileId.startsWith('reserve-')) pile = game.reserves[parseInt(pileId.split('-')[1])];
-    if (pileId === 'stockpile') pile = game.stockpile;
+    if (pileId === 'stockpile') {
+        pile = game.stockpile;
+        isStock = true;
+    }
 
     if (pile && pile.length > 0) {
-        const topCard = pile[pile.length - 1];
-        if (!topCard.faceUp) {
+        if (isStock) {
+            // Batch Peek logic (Issue 4 refinement)
             game.peeksLeft--;
             game.isPeekActive = false;
-            topCard.isPeeked = true;
+            const numToDraw = 5 - game.currentPhase;
+            const batch = pile.slice(-numToDraw);
+            batch.forEach(c => c.isPeeked = true);
             renderAll();
             setTimeout(() => {
-                topCard.isPeeked = false;
+                batch.forEach(c => c.isPeeked = false);
                 renderAll();
             }, 3000);
             return true;
+        } else {
+            const topCard = pile[pile.length - 1];
+            if (!topCard.faceUp) {
+                game.peeksLeft--;
+                game.isPeekActive = false;
+                topCard.isPeeked = true;
+                renderAll();
+                setTimeout(() => {
+                    topCard.isPeeked = false;
+                    renderAll();
+                }, 3000);
+                return true;
+            }
         }
     }
     game.isPeekActive = false;
