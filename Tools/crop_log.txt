@@ -1,0 +1,8 @@
+OK: BurgundyGold.png
+OK: EmeraldGreenMixedSilver‑Gold.png
+OK: HunterGreenGold.png
+OK: ImperialPurpleGold.png
+OK: MatteBlackChampagneGold.png
+OK: NavySilver.png
+OK: PearlWhiteSilver.png
+OK: TurquoiseSilver.png
