@@ -29,6 +29,11 @@
                 <span class="btn-label">Peek (<span id="peek-count">3</span>)</span>
             </button>
             <div id="phase-display">Phase: 1/4</div>
+            <div id="seed-display" style="font-family: monospace; font-size: 12px; margin: 0 10px; color: var(--gold);">Game #---</div>
+            <button id="btn-replay-seed" class="toolbar-btn">
+                <span class="btn-icon">🔢</span>
+                <span class="btn-label">Replay</span>
+            </button>
             <button id="btn-new" class="toolbar-btn new-btn">
                 <span class="btn-icon">🔄</span>
                 <span class="btn-label">New Game</span>
@@ -117,6 +122,19 @@
 
     <!-- Drag ghost element -->
     <div id="drag-ghost" class="hidden"></div>
+
+    <!-- Seed Replay Modal -->
+    <div id="overlay-seed" class="overlay hidden">
+        <div class="overlay-content">
+            <h2>Replay Seed</h2>
+            <p>Enter a Game Number to play exactly the same board.</p>
+            <input type="number" id="seed-input" placeholder="e.g. 12345" style="padding: 10px; font-size: 18px; text-align: center; margin: 15px 0; width: 80%; border-radius: 5px; border: 1px solid var(--gold); background: rgba(0,0,0,0.3); color: white;">
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button id="btn-seed-cancel" class="new-game-btn" style="background: #333;">Cancel</button>
+                <button id="btn-seed-confirm" class="new-game-btn">Play Seed</button>
+            </div>
+        </div>
+    </div>
 
     <script src="game.js"></script>
 </body>

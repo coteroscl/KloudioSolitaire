@@ -27,21 +27,32 @@ function createDeck(numDecks = 2) {
     return cards;
 }
 
-function shuffle(arr) {
+// ---- Seeded PRNG (Mulberry32) ----
+function mulberry32(a) {
+    return function() {
+      var t = a += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+}
+
+function shuffle(arr, rng) {
+    rng = rng || Math.random;
     for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = Math.floor(rng() * (i + 1));
         [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr;
 }
 
-function winnableShuffle(deck) {
+function winnableShuffle(deck, rng) {
     // 1. Extract all Aces and some 2s to ensure a strong start
     const aces = deck.filter(c => c.rank === 'A');
     const twos = deck.filter(c => c.rank === '2');
     const rest = deck.filter(c => c.rank !== 'A' && c.rank !== '2');
     
-    shuffle(rest);
+    shuffle(rest, rng);
     
     // 2. We have 4 Tableaus, 8 Foundations (4 Ace, 4 King)
     // Let's put 4 Aces in the first 4 Tableau spots or early Stockpile
@@ -93,8 +104,11 @@ const game = {
     peeksLeft: 3,
     isPeekActive: false,
     hasStarted: false,
+    lastMoveTime: 0,
+    hintCooldown: 2000, // 2 seconds Strategic Pause
+    currentSeed: null, // Track the current game seed
 
-    startNewGame() {
+    startNewGame(seed = null) {
         this.centralFoundation = [];
         this.kingFoundations = [[], [], [], []];
         this.reserves = [[], [], [], []];
@@ -109,9 +123,17 @@ const game = {
         this.currentHint = null;
         this.peeksLeft = 3;
         this.isPeekActive = false;
+        
+        if (!seed) {
+            this.currentSeed = Math.floor(Math.random() * 1000000);
+        } else {
+            this.currentSeed = seed;
+        }
+        
+        const rng = mulberry32(this.currentSeed);
 
         // Use the new Winnable Shuffle logic for testing
-        const deck = winnableShuffle(createDeck(2));
+        const deck = winnableShuffle(createDeck(2), rng);
         let idx = 0;
 
         // Deal reserves (10 face-down each)
@@ -277,6 +299,7 @@ const game = {
         targetArray.push(...cards);
         
         this.lastMove = { from: fromPile, to: toPile, count: cards.length };
+        this.lastMoveTime = Date.now();
         this.currentHints = []; // Clear hints after a move is made
         
         if (this.isGameWon) {
@@ -293,6 +316,7 @@ const game = {
             card.faceUp = true;
             this.tableaus[idx].push(card);
             this.moveCount++;
+            this.lastMoveTime = Date.now();
             renderAll();
         }
     },
@@ -350,22 +374,10 @@ const game = {
     isPeekAllowed() {
         if (this.peeksLeft <= 0) return false;
         
-        // Condition 1: Multiple strategic choices
-        this.findHint();
-        const multipleMoves = this.currentHints.length >= 2;
-        
-        // Condition 2: Choice between a move and a hidden Reserve
-        const hasEmptyTableau = this.tableaus.some(t => t.length === 0);
-        const hasReserves = this.reserves.some(r => r.length > 0);
-        
-        // Decision Required: If we have an empty space AND at least one other move OR the choice to flip a reserve.
-        if (hasEmptyTableau && (multipleMoves || hasReserves)) return true;
-        
-        // If we have multiple moves from different source types (e.g. Stock vs Tableau)
-        const sourceTypes = new Set(this.currentHints.map(h => h.from.split('-')[0]));
-        if (sourceTypes.size >= 2 || multipleMoves) return true;
-
-        return false;
+        // Peek is only strategically useful if there is a choice to be made.
+        // If there are 0 or 1 hints available, the player has no options, so peeking is disabled.
+        const hints = this.calculateHints();
+        return hints.length >= 2;
     },
 
     checkGameOver() {
@@ -405,18 +417,23 @@ const game = {
 
     // ---- Hint ----
     findHint() {
-        this.currentHints = [];
+        this.currentHints = this.calculateHints();
+        return this.currentHints;
+    },
+
+    calculateHints() {
+        let hints = [];
         
         for (let i = 0; i < 4; i++) {
             const t = this.tableaus[i];
             if (!t.length) continue;
             const top = t[t.length - 1];
             if (this.canMoveToCenterFoundation(top)) {
-                this.currentHints.push({ from: `tableau-${i}`, to: 'ace-foundation', count: 1, priority: 1 });
+                hints.push({ from: `tableau-${i}`, to: 'ace-foundation', count: 1, priority: 1 });
             }
             for (let j = 0; j < 4; j++) {
                 if (this.canMoveToKingFoundation(top, j)) {
-                    this.currentHints.push({ from: `tableau-${i}`, to: `king-${j}`, count: 1, priority: 2 });
+                    hints.push({ from: `tableau-${i}`, to: `king-${j}`, count: 1, priority: 2 });
                 }
             }
         }
@@ -425,14 +442,14 @@ const game = {
             if (!st.length) continue;
             const top = st[st.length - 1];
             if (this.canMoveToCenterFoundation(top)) {
-                this.currentHints.push({ from: `temp-${i}`, to: 'ace-foundation', count: 1, priority: 1 });
+                hints.push({ from: `temp-${i}`, to: 'ace-foundation', count: 1, priority: 1 });
             }
             for (let j = 0; j < 4; j++) {
                 if (this.canMoveToKingFoundation(top, j)) {
-                    this.currentHints.push({ from: `temp-${i}`, to: `king-${j}`, count: 1, priority: 2 });
+                    hints.push({ from: `temp-${i}`, to: `king-${j}`, count: 1, priority: 2 });
                 }
                 if (this.canMoveToTableau([top], j)) {
-                    this.currentHints.push({ from: `temp-${i}`, to: `tableau-${j}`, count: 1, priority: 3 });
+                    hints.push({ from: `temp-${i}`, to: `tableau-${j}`, count: 1, priority: 3 });
                 }
             }
         }
@@ -442,7 +459,7 @@ const game = {
             const top = this.centralFoundation[this.centralFoundation.length - 1];
             for (let j = 0; j < 4; j++) {
                 if (this.canMoveToTableau([top], j)) {
-                    this.currentHints.push({ from: 'ace-foundation', to: `tableau-${j}`, count: 1, priority: 8 });
+                    hints.push({ from: 'ace-foundation', to: `tableau-${j}`, count: 1, priority: 8 });
                 }
             }
         }
@@ -452,7 +469,7 @@ const game = {
             const top = kf[kf.length - 1];
             for (let j = 0; j < 4; j++) {
                 if (this.canMoveToTableau([top], j)) {
-                    this.currentHints.push({ from: `king-${i}`, to: `tableau-${j}`, count: 1, priority: 8 });
+                    hints.push({ from: `king-${i}`, to: `tableau-${j}`, count: 1, priority: 8 });
                 }
             }
         }
@@ -508,34 +525,34 @@ const game = {
                             }
                         }
                         
-                        this.currentHints.push({ from: `tableau-${i}`, to: `tableau-${j}`, count: subSeq.length, priority: movePriority });
+                        hints.push({ from: `tableau-${i}`, to: `tableau-${j}`, count: subSeq.length, priority: movePriority });
                     }
                 }
             }
         }
         
         // 4. Check if stockpile can still be drawn
-        if (this.stockpile.length > 0 && this.currentHints.length === 0) {
-            this.currentHints.push({ from: 'stockpile', to: null, count: 1, priority: 5 });
+        if (this.stockpile.length > 0 && hints.length === 0) {
+            hints.push({ from: 'stockpile', to: null, count: 1, priority: 5 });
         }
 
         // 5. Check for Consolidation (Issue 7)
         if (this.stockpile.length === 0 && this.temporaryStacks.some(s => s.length > 0)) {
             // Suggest consolidation if no foundation moves are available
-            if (!this.currentHints.some(h => h.priority <= 2)) {
-                this.currentHints.push({ from: 'stockpile', to: null, count: 1, priority: 0 });
+            if (!hints.some(h => h.priority <= 2)) {
+                hints.push({ from: 'stockpile', to: null, count: 1, priority: 0 });
             }
         }
 
         // 6. Check if reserves can be flipped
         for (let i = 0; i < 4; i++) {
             if (this.tableaus[i].length === 0 && this.reserves[i].length > 0) {
-                this.currentHints.push({ from: `reserve-${i}`, to: `tableau-${i}`, count: 1, priority: 0 });
+                hints.push({ from: `reserve-${i}`, to: `tableau-${i}`, count: 1, priority: 0 });
             }
         }
 
-        this.currentHints.sort((a, b) => a.priority - b.priority);
-        return this.currentHints;
+        hints.sort((a, b) => a.priority - b.priority);
+        return hints;
     }
 };
 
@@ -568,10 +585,10 @@ function createCardEl(card, cardIndex = 0) {
 function renderPile(el, cards, cascade = false) {
     el.innerHTML = '';
     
-    // Dynamic Fanning ('The Squish') - Issue 3
-    let overlap = 25; // Default overlap in pixels
-    if (cascade && cards.length > 6) {
-        overlap = Math.max(10, 150 / cards.length); // Squish more as pile grows
+    // Dynamic Fanning ('The Squish') - Issue 3 Refinement
+    let overlap = 35; // Increased default overlap for better grabbing
+    if (cascade && cards.length > 5) {
+        overlap = Math.max(15, 180 / cards.length); // More generous squish
     }
 
     cards.forEach((card, i) => {
@@ -599,7 +616,24 @@ function renderPile(el, cards, cascade = false) {
             cardEl.style.display = 'none';
         }
         el.appendChild(cardEl);
+        
+        // Add Sequence Hover Listeners
+        if (card.faceUp) {
+            cardEl.onmouseenter = () => highlightSequence(el.id, i, true);
+            cardEl.onmouseleave = () => highlightSequence(el.id, i, false);
+        }
     });
+}
+
+function highlightSequence(pileId, cardIndex, active) {
+    const pileEl = document.getElementById(pileId);
+    if (!pileEl) return;
+    const cardEls = pileEl.querySelectorAll('.card');
+    
+    // Highlight target card and everything above it
+    for (let i = cardIndex; i < cardEls.length; i++) {
+        cardEls[i].classList.toggle('sequence-hover', active);
+    }
 }
 
 function renderAll() {
@@ -657,6 +691,12 @@ function renderAll() {
         document.getElementById('btn-peek').title = "Strategic Fork Detected: Peek is available.";
     } else {
         document.getElementById('btn-peek').title = "No strategic choice required right now.";
+    }
+
+    // Seed Display
+    const seedDisplay = document.getElementById('seed-display');
+    if (seedDisplay) {
+        seedDisplay.textContent = `Game #${game.currentSeed}`;
     }
 
     // Toolbar buttons
@@ -1082,6 +1122,14 @@ function clearHighlights() {
 // ============================================
 
 function showHint() {
+    const timeSinceMove = Date.now() - game.lastMoveTime;
+    if (timeSinceMove < game.hintCooldown) {
+        // Provide feedback that the player should "think"
+        const btn = document.getElementById('btn-hint');
+        btn.classList.add('cooldown');
+        setTimeout(() => btn.classList.remove('cooldown'), 300);
+        return;
+    }
     game.findHint();
     renderAll();
 }
@@ -1127,6 +1175,26 @@ piles.forEach(el => {
 
 document.getElementById('btn-new').onclick = () => { game.startNewGame(); renderAll(); };
 
+document.getElementById('btn-replay-seed').onclick = () => {
+    const seedInput = document.getElementById('seed-input');
+    seedInput.value = game.currentSeed;
+    document.getElementById('overlay-seed').classList.remove('hidden');
+    seedInput.focus();
+};
+
+document.getElementById('btn-seed-cancel').onclick = () => {
+    document.getElementById('overlay-seed').classList.add('hidden');
+};
+
+document.getElementById('btn-seed-confirm').onclick = () => {
+    const seedInput = document.getElementById('seed-input').value;
+    if (seedInput && !isNaN(seedInput)) {
+        document.getElementById('overlay-seed').classList.add('hidden');
+        game.startNewGame(parseInt(seedInput));
+        renderAll();
+    }
+};
+
 function handlePileClick(pileId) {
     let pile = null;
     let isStock = false;
@@ -1170,6 +1238,8 @@ function handlePileClick(pileId) {
     return true;
 }
 
-// Initial call
-game.startNewGame();
-renderAll();
+// Initial call with a slight delay for the 'Strategic Breath'
+setTimeout(() => {
+    game.startNewGame();
+    renderAll();
+}, 1000);

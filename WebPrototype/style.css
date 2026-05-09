@@ -195,13 +195,27 @@ body {
     cursor: grab;
     top: 0;
     left: 0;
-    touch-action: none; /* Prevents scrolling on iOS while dragging cards */
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+    touch-action: none;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s, opacity 0.2s;
     box-shadow: var(--shadow-card);
     transform-style: preserve-3d;
-    flex-shrink: 0; /* Prevents compression in flex layouts */
+    flex-shrink: 0;
 }
 .card:active { cursor: grabbing; }
+
+.card.face-up:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    z-index: 100 !important;
+}
+
+/* Sequence Highlighting - Issue Fix */
+.card.sequence-hover {
+    filter: brightness(1.15) contrast(1.1);
+    box-shadow: 0 0 20px var(--primary-glow) !important;
+    transform: translateY(-8px) scale(1.03) !important;
+    z-index: 200 !important;
+}
 
 /* Face-up card */
 .card-face {
@@ -458,7 +472,20 @@ body {
     left: auto !important;
     top: auto !important;
     transform: rotate(90deg) !important;
-    margin: -13px 0 !important; /* Keep flex flow for fanning */
+}
+
+/* Fix Sequence Hover Pop-up for North/South (Rotated Cards) */
+#board #cell-n .tableau-pile .card.face-up:hover, #board #cell-s .tableau-pile .card.face-up:hover {
+    transform: rotate(90deg) translateX(-5px) scale(1.02) !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    z-index: 100 !important;
+}
+
+#board #cell-n .tableau-pile .card.sequence-hover, #board #cell-s .tableau-pile .card.sequence-hover {
+    transform: rotate(90deg) translateX(-8px) scale(1.03) !important;
+    filter: brightness(1.15) contrast(1.1);
+    box-shadow: 0 0 20px var(--primary-glow) !important;
+    z-index: 200 !important;
 }
 
 /* North (Fan UP): visible card is index 2 (top) and grows UP away from center */
