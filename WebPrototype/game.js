@@ -996,30 +996,33 @@ function hideOverlays() {
 // EVENT BINDINGS
 // ============================================
 
-    // Peek button
-    document.getElementById('btn-peek').onclick = () => {
-        if (game.peeksLeft > 0) {
-            game.isPeekActive = !game.isPeekActive;
-            renderAll();
+document.getElementById('btn-undo').onclick = () => { game.undo(); renderAll(); };
+document.getElementById('btn-redo').onclick = () => { game.redo(); renderAll(); };
+document.getElementById('btn-hint').onclick = () => { showHint(); };
+
+// Peek button
+document.getElementById('btn-peek').onclick = () => {
+    if (game.peeksLeft > 0) {
+        game.isPeekActive = !game.isPeekActive;
+        renderAll();
+    }
+};
+
+// Add click listeners to piles for peeking (Direct Integration)
+const piles = [...document.querySelectorAll('.pile'), document.getElementById('stockpile')];
+piles.forEach(el => {
+    if (!el) return;
+    const originalClick = el.onclick;
+    el.onclick = (e) => {
+        if (game.isPeekActive) {
+            handlePileClick(el.id);
+        } else if (originalClick) {
+            originalClick(e);
         }
     };
-    
-    // Add click listeners to piles for peeking (Direct Integration)
-    const piles = [...document.querySelectorAll('.pile'), document.getElementById('stockpile')];
-    piles.forEach(el => {
-        if (!el) return;
-        const originalClick = el.onclick;
-        el.onclick = (e) => {
-            if (game.isPeekActive) {
-                handlePileClick(el.id);
-            } else if (originalClick) {
-                originalClick(e);
-            }
-        };
-    });
+});
 
-    document.getElementById('btn-new').onclick = () => { game.startNewGame(); renderAll(); };
-}
+document.getElementById('btn-new').onclick = () => { game.startNewGame(); renderAll(); };
 
 function handlePileClick(pileId) {
     let pile = null;
