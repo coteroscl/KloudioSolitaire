@@ -264,31 +264,22 @@ body {
     display: block;
 }
 
-/* Face-down card */
+/* Face-down card styles */
 .card-back {
-    background: linear-gradient(135deg, #1a2a5e, #2d4a8a);
-    border: 1px solid #3a5a9a;
     border-radius: var(--card-radius);
     width: 100%;
     height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+    background-color: #111; /* fallback */
 }
-.card-back::before {
-    content: '♠';
-    font-size: 36px;
-    color: rgba(255,255,255,0.12);
-}
-.card-back::after {
-    content: '';
-    position: absolute;
-    inset: 4px;
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 5px;
-}
+
+/* Theme Mappings */
+.theme-navy-silver .card-back { background-image: url('../assets/CardBacks/NavySilver.svg'); }
+.theme-black-champagne .card-back { background-image: url('../assets/CardBacks/MatteBlackChampagneGold.svg'); }
+.theme-burgundy-gold .card-back { background-image: url('../assets/CardBacks/BurgundyGold.svg'); }
+.theme-white-silver .card-back { background-image: url('../assets/CardBacks/cardback_master_silver_white.svg'); }
 
 /* Card being dragged (in its original position) */
 .card.dragging {

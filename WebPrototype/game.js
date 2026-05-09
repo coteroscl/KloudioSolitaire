@@ -1238,6 +1238,21 @@ function handlePileClick(pileId) {
     return true;
 }
 
+// ============================================
+// THEME SELECTION
+// ============================================
+
+const themeSelector = document.getElementById('theme-selector');
+if (themeSelector) {
+    // Set initial theme
+    document.body.className = themeSelector.value;
+    
+    // Listen for changes
+    themeSelector.addEventListener('change', (e) => {
+        document.body.className = e.target.value;
+    });
+}
+
 // Initial call with a slight delay for the 'Strategic Breath'
 setTimeout(() => {
     game.startNewGame();
