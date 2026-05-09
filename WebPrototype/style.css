@@ -276,10 +276,10 @@ body {
 }
 
 /* Theme Mappings */
-.theme-navy-silver .card-back { background-image: url('../assets/CardBacks/NavySilver.svg'); }
-.theme-black-champagne .card-back { background-image: url('../assets/CardBacks/MatteBlackChampagneGold.svg'); }
-.theme-burgundy-gold .card-back { background-image: url('../assets/CardBacks/BurgundyGold.svg'); }
-.theme-white-silver .card-back { background-image: url('../assets/CardBacks/cardback_master_silver_white.svg'); }
+.theme-navy-silver .card-back { background-image: url('../assets/CardBacks/NavySilver.png'); }
+.theme-black-champagne .card-back { background-image: url('../assets/CardBacks/MatteBlackChampagneGold.png'); }
+.theme-burgundy-gold .card-back { background-image: url('../assets/CardBacks/BurgundyGold.png'); }
+.theme-white-silver .card-back { background-image: url('../assets/CardBacks/PearlWhiteSilver.png'); }
 
 /* Card being dragged (in its original position) */
 .card.dragging {
