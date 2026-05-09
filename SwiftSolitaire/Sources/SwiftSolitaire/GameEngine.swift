@@ -68,9 +68,11 @@ class GameEngine: ObservableObject {
     // MARK: - Hint State
     @Published var currentHint: Hint? = nil
     
-    // MARK: - Game Over State
     @Published var isGameOver: Bool = false
     @Published var isGameWon: Bool = false
+    
+    // MARK: - Move History (for Hints)
+    var lastMove: (from: PileLocation, to: PileLocation, count: Int)? = nil
     
     // MARK: - Initialization
     
@@ -94,6 +96,7 @@ class GameEngine: ObservableObject {
         canRedo = false
         currentHint = nil
         isGameOver = false
+        lastMove = nil
         
         var deck = Deck(numberOfDecks: 2)
         deck.shuffle()
@@ -154,8 +157,8 @@ class GameEngine: ObservableObject {
         currentPhase = snapshot.currentPhase
         moveCount = snapshot.moveCount
         lastDrawStackIndex = snapshot.lastDrawStackIndex
-        currentHint = nil
         isGameOver = false
+        lastMove = nil
     }
     
     /// Saves the current state to the undo stack before a mutation.
@@ -333,8 +336,11 @@ class GameEngine: ObservableObject {
         
         if moveSuccessful {
             removeCardsFromSource()
-            checkAndRefillEmptyTableaus()
+            // checkAndRefillEmptyTableaus() // Removed: Manual refill now required
             checkCompletedFoundations()
+            
+            // Record last move for hint loop prevention
+            self.lastMove = (from: dragSource, to: target, count: draggedCards.count)
             currentHint = nil
         }
         
@@ -369,9 +375,25 @@ class GameEngine: ObservableObject {
             temporaryStacks[index].removeLast(countToRemove)
         case .reserve(let index):
             reserves[index].removeLast(countToRemove)
+        case .centerFoundation:
+            centralFoundation.removeLast(countToRemove)
+        case .kingFoundation(let index):
+            kingFoundations[index].removeLast(countToRemove)
         default:
             break
         }
+    }
+
+    /// Manually flips a card from reserve into an empty tableau (Issue 3)
+    func flipReserve(at index: Int) {
+        guard tableaus[index].isEmpty, !reserves[index].isEmpty else { return }
+        saveForUndo()
+        var card = reserves[index].removeLast()
+        card.isFaceUp = true
+        tableaus[index].append(card)
+        moveCount += 1
+        lastMove = (from: .reserve(index), to: .tableau(index), count: 1)
+        currentHint = nil
     }
     
     /// Automatically refills an empty tableau from its corresponding reserve pile.
@@ -399,13 +421,19 @@ class GameEngine: ObservableObject {
             return false
         }
         
+        // Record source before it's removed
+        let originalSource = source
+        
         // Try center foundation first (Ace piles)
         if canMoveToCenterFoundation(card: topCard) {
             saveForUndo()
             centralFoundation.append(topCard)
             removeCardFromPile(source: source)
-            checkAndRefillEmptyTableaus()
+            // checkAndRefillEmptyTableaus() // Removed
             checkCompletedFoundations()
+            
+            self.lastMove = (from: originalSource, to: .centerFoundation, count: 1)
+            
             checkWinCondition()
             checkGameOver()
             return true
@@ -488,62 +516,112 @@ class GameEngine: ObservableObject {
     
     /// Finds and sets the first valid move as the current hint.
     func findHint() {
-        // 1. Check tableau top cards -> foundations / king piles
+        var hints: [(hint: Hint, priority: Int)] = []
+        
+        // 0. Consolidation & Reserve Flip (Priority 0)
+        if stockpile.isEmpty && !temporaryStacks.isEmpty && temporaryStacks.contains(where: { !$0.isEmpty }) {
+            // Check if foundation moves exist first
+            var foundationMovePossible = false
+            for stack in temporaryStacks {
+                if let top = stack.last, (canMoveToCenterFoundation(card: top) || (0..<4).contains(where: { canMoveToKingFoundation(card: top, pileIndex: $0) })) {
+                    foundationMovePossible = true
+                }
+            }
+            if !foundationMovePossible {
+                hints.append((Hint(card: Card(suit: .spades, rank: .ace), from: .stockpile, to: .none), 0))
+            }
+        }
+        
+        for i in 0..<4 {
+            if tableaus[i].isEmpty, let _ = reserves[i].last {
+                hints.append((Hint(card: Card(suit: .spades, rank: .ace), from: .reserve(i), to: .tableau(i)), 0))
+            }
+        }
+
+        // 1. Tableau -> Foundation (Priority 1-2)
         for i in 0..<4 {
             guard let topCard = tableaus[i].last else { continue }
             if canMoveToCenterFoundation(card: topCard) {
-                currentHint = Hint(card: topCard, from: .tableau(i), to: .centerFoundation)
-                return
+                hints.append((Hint(card: topCard, from: .tableau(i), to: .centerFoundation), 1))
             }
             for j in 0..<4 {
                 if canMoveToKingFoundation(card: topCard, pileIndex: j) {
-                    currentHint = Hint(card: topCard, from: .tableau(i), to: .kingFoundation(j))
-                    return
+                    hints.append((Hint(card: topCard, from: .tableau(i), to: .kingFoundation(j)), 2))
                 }
             }
         }
         
-        // 2. Check temporary stack top cards -> foundations / king piles / tableaus
+        // 2. Temp -> Foundation/Tableau (Priority 1-3)
         for i in 0..<temporaryStacks.count {
             guard let topCard = temporaryStacks[i].last else { continue }
             if canMoveToCenterFoundation(card: topCard) {
-                currentHint = Hint(card: topCard, from: .temporaryStack(i), to: .centerFoundation)
-                return
+                hints.append((Hint(card: topCard, from: .temporaryStack(i), to: .centerFoundation), 1))
             }
             for j in 0..<4 {
                 if canMoveToKingFoundation(card: topCard, pileIndex: j) {
-                    currentHint = Hint(card: topCard, from: .temporaryStack(i), to: .kingFoundation(j))
-                    return
+                    hints.append((Hint(card: topCard, from: .temporaryStack(i), to: .kingFoundation(j)), 2))
                 }
-            }
-            for j in 0..<4 {
                 if canMoveToTableau(cardsToMove: [topCard], pileIndex: j) {
-                    currentHint = Hint(card: topCard, from: .temporaryStack(i), to: .tableau(j))
-                    return
+                    hints.append((Hint(card: topCard, from: .temporaryStack(i), to: .tableau(j)), 3))
                 }
             }
         }
         
-        // 3. Check tableau-to-tableau moves
+        // 3. Tableau -> Tableau (including Parking Logic)
         for i in 0..<4 {
-            guard let topCard = tableaus[i].last else { continue }
-            for j in 0..<4 where j != i {
-                if canMoveToTableau(cardsToMove: [topCard], pileIndex: j) {
-                    currentHint = Hint(card: topCard, from: .tableau(i), to: .tableau(j))
-                    return
+            let t = tableaus[i]
+            guard !t.isEmpty else { continue }
+            
+            for k in 0..<t.count {
+                let subSeq = Array(t[k...])
+                guard isValidTableauSequence(subSeq) else { continue }
+                
+                for j in 0..<4 where j != i {
+                    if canMoveToTableau(cardsToMove: subSeq, pileIndex: j) {
+                        // Loop Prevention
+                        if let last = lastMove, last.from == .tableau(j), last.to == .tableau(i), last.count == subSeq.count {
+                            continue
+                        }
+                        
+                        if k == 0 {
+                            if !tableaus[j].isEmpty {
+                                hints.append((Hint(card: subSeq[0], from: .tableau(i), to: .tableau(j)), 3))
+                            }
+                        } else {
+                            let oldParent = t[k-1]
+                            let newParent = tableaus[j].last
+                            
+                            var priority = 4
+                            if let np = newParent, oldParent.suit == np.suit && oldParent.rank == np.rank {
+                                // "Parking" logic
+                                if canMoveToCenterFoundation(card: oldParent) || (0..<4).contains(where: { canMoveToKingFoundation(card: oldParent, pileIndex: $0) }) {
+                                    priority = 1
+                                } else {
+                                    continue // Pointless
+                                }
+                            }
+                            hints.append((Hint(card: subSeq[0], from: .tableau(i), to: .tableau(j)), priority))
+                        }
+                    }
                 }
             }
         }
         
-        // 4. Check if stockpile can still be drawn
-        if !stockpile.isEmpty {
-            currentHint = Hint(card: Card(suit: .spades, rank: .ace), from: .stockpile, to: .none) 
-            // The card doesn't matter for the stockpile hint, just the location
-            return
+        // 4. Foundation -> Tableau (Priority 8)
+        let foundationLocations: [PileLocation] = [.centerFoundation, .kingFoundation(0), .kingFoundation(1), .kingFoundation(2), .kingFoundation(3)]
+        for loc in foundationLocations {
+            if let card = getArrayForLocation(loc)?.last {
+                for j in 0..<4 {
+                    if canMoveToTableau(cardsToMove: [card], pileIndex: j) {
+                        hints.append((Hint(card: card, from: loc, to: .tableau(j)), 8))
+                    }
+                }
+            }
         }
         
-        // No hint found
-        currentHint = nil
+        // Sort by priority and pick the best
+        hints.sort { $0.priority < $1.priority }
+        currentHint = hints.first?.hint
     }
     
     // MARK: - Game Over Detection

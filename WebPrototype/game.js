@@ -51,6 +51,9 @@ const game = {
     lastDrawStackIndex: -1,
     startTime: Date.now(),
     currentHint: null,
+    peeksLeft: 3,
+    isPeekActive: false,
+    hasStarted: false,
 
     startNewGame() {
         this.centralFoundation = [];
@@ -65,6 +68,8 @@ const game = {
         this.lastDrawStackIndex = -1;
         this.startTime = Date.now();
         this.currentHint = null;
+        this.peeksLeft = 3;
+        this.isPeekActive = false;
 
         const deck = shuffle(createDeck(2));
         let idx = 0;
@@ -83,6 +88,7 @@ const game = {
 
         // Remaining to stockpile
         this.stockpile = deck.slice(idx);
+        this.hasStarted = true;
 
         hideOverlays();
     },
@@ -494,14 +500,23 @@ function createCardEl(card, cardIndex = 0) {
 function renderPile(el, cards, cascade = false) {
     el.innerHTML = '';
     cards.forEach((card, i) => {
-        const cardEl = createCardEl(card, cascade ? i : 0);
+        const isTop = i === cards.length - 1;
+        let cardEl;
+        
+        // Integrated Peek Logic (Issue Fix)
+        if (card.isPeeked && isTop) {
+            const peekedCard = { ...card, faceUp: true };
+            cardEl = createCardEl(peekedCard, cascade ? i : 0);
+            cardEl.classList.add('peek-reveal');
+        } else {
+            cardEl = createCardEl(card, cascade ? i : 0);
+        }
+
         if (!cascade && i < cards.length - 1) {
             cardEl.style.display = 'none';
         }
         el.appendChild(cardEl);
     });
-
-    // Cards are positioned via Flexbox in CSS, so we just append them.
 }
 
 function renderAll() {
@@ -546,23 +561,27 @@ function renderAll() {
         tempContainer.appendChild(el);
     });
 
-    // Phase display
     document.getElementById('phase-display').textContent =
         game.currentPhase <= 4 ? `Phase: ${game.currentPhase}/4` : 'All Phases Done';
+
+    // Peek count
+    document.getElementById('peek-count').textContent = game.peeksLeft;
+    document.getElementById('btn-peek').classList.toggle('active', game.isPeekActive);
+    document.getElementById('btn-peek').disabled = game.peeksLeft <= 0;
 
     // Toolbar buttons
     document.getElementById('btn-undo').disabled = !game.undoStack.length;
     document.getElementById('btn-redo').disabled = !game.redoStack.length;
 
     // Check win/game over
-    if (game.isGameWon) {
+    if (game.hasStarted && game.isGameWon) {
         const elapsed = Math.floor((Date.now() - game.startTime) / 1000);
         const mins = Math.floor(elapsed / 60);
         const secs = elapsed % 60;
         document.getElementById('win-stats').textContent =
             `Moves: ${game.moveCount} | Time: ${mins}m ${secs}s`;
         document.getElementById('overlay-win').classList.remove('hidden');
-    } else if (game.checkGameOver()) {
+    } else if (game.hasStarted && game.checkGameOver()) {
         document.getElementById('overlay-gameover').classList.remove('hidden');
     }
 
@@ -977,18 +996,55 @@ function hideOverlays() {
 // EVENT BINDINGS
 // ============================================
 
-document.getElementById('btn-undo').onclick = () => { game.undo(); renderAll(); };
-document.getElementById('btn-redo').onclick = () => { game.redo(); renderAll(); };
-document.getElementById('btn-hint').onclick = () => { showHint(); };
-document.getElementById('btn-new').onclick = () => { game.startNewGame(); renderAll(); };
-document.getElementById('gameover-undo').onclick = () => {
-    hideOverlays();
-    game.undo();
-    renderAll();
-};
+    // Peek button
+    document.getElementById('btn-peek').onclick = () => {
+        if (game.peeksLeft > 0) {
+            game.isPeekActive = !game.isPeekActive;
+            renderAll();
+        }
+    };
+    
+    // Add click listeners to piles for peeking (Direct Integration)
+    const piles = [...document.querySelectorAll('.pile'), document.getElementById('stockpile')];
+    piles.forEach(el => {
+        if (!el) return;
+        const originalClick = el.onclick;
+        el.onclick = (e) => {
+            if (game.isPeekActive) {
+                handlePileClick(el.id);
+            } else if (originalClick) {
+                originalClick(e);
+            }
+        };
+    });
 
-// ============================================
-// INIT
-// ============================================
+    document.getElementById('btn-new').onclick = () => { game.startNewGame(); renderAll(); };
+}
+
+function handlePileClick(pileId) {
+    let pile = null;
+    if (pileId.startsWith('reserve-')) pile = game.reserves[parseInt(pileId.split('-')[1])];
+    if (pileId === 'stockpile') pile = game.stockpile;
+
+    if (pile && pile.length > 0) {
+        const topCard = pile[pile.length - 1];
+        if (!topCard.faceUp) {
+            game.peeksLeft--;
+            game.isPeekActive = false;
+            topCard.isPeeked = true;
+            renderAll();
+            setTimeout(() => {
+                topCard.isPeeked = false;
+                renderAll();
+            }, 3000);
+            return true;
+        }
+    }
+    game.isPeekActive = false;
+    renderAll();
+    return true;
+}
+
+// Initial call
 game.startNewGame();
 renderAll();

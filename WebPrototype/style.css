@@ -490,3 +490,31 @@ body {
     height: var(--card-width);
 }
 
+
+/* Peek Button Active State */
+.toolbar-btn.active {
+    background: var(--primary-color) !important;
+    color: white !important;
+    box-shadow: 0 0 15px var(--primary-glow) !important;
+    transform: translateY(-2px);
+}
+
+/* Fog Clearer (Peek) Shimmer Effect */
+.peek-reveal {
+    animation: shimmer 1s infinite alternate ease-in-out;
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.9) !important;
+    transform: scale(1.08) !important;
+    z-index: 999;
+    pointer-events: none;
+}
+
+@keyframes shimmer {
+    from { 
+        filter: brightness(1) contrast(1); 
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    }
+    to { 
+        filter: brightness(1.6) contrast(1.1); 
+        box-shadow: 0 0 30px rgba(255, 255, 255, 1);
+    }
+}
