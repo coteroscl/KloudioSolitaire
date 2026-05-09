@@ -585,10 +585,10 @@ function createCardEl(card, cardIndex = 0) {
 function renderPile(el, cards, cascade = false) {
     el.innerHTML = '';
     
-    // Dynamic Fanning ('The Squish') - Issue 3 Refinement
-    let overlap = 35; // Increased default overlap for better grabbing
+    // Dynamic Fanning - scaled for new 85x119px card size (was 35px for 65px wide cards)
+    let overlap = 45;
     if (cascade && cards.length > 5) {
-        overlap = Math.max(15, 180 / cards.length); // More generous squish
+        overlap = Math.max(20, 235 / cards.length);
     }
 
     cards.forEach((card, i) => {
