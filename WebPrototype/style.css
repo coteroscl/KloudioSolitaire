@@ -269,8 +269,8 @@ body {
     border-radius: var(--card-radius);
     width: 100%;
     height: 100%;
-    /* Scale to 106% to visually crop out the 20px white border baked into the PNGs */
-    background-size: 106% 106%;
+    /* Scale aggressively to act as a razor blade and slice off the baked-in white PNG borders */
+    background-size: 112% 112%;
     background-position: center;
     background-color: transparent;
 }
