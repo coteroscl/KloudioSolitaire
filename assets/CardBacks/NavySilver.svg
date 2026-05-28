@@ -1,0 +1,137 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 1000 1400"
+  preserveAspectRatio="xMidYMid meet">
+
+  <!-- ===== Definiciones de color ===== -->
+  <defs>
+    <!-- Fondo azul -->
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#02091A"/>
+      <stop offset="100%" stop-color="#050F26"/>
+    </linearGradient>
+
+    <!-- Plateado -->
+    <linearGradient id="silver" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F5F5F5"/>
+      <stop offset="50%" stop-color="#D0D0D0"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+
+    <!-- Ornamento de esquina (vector limpio, simétrico) -->
+    <g id="corner-ornament" fill="none" stroke="url(#silver)" stroke-width="5">
+      <!-- Marco interior de la esquina -->
+      <path d="
+        M 0 80
+        Q 0 0 80 0
+        " />
+      <!-- Curva decorativa 1 -->
+      <path d="
+        M 10 80
+        Q 10 20 70 20
+      " />
+      <!-- Curva decorativa 2 -->
+      <path d="
+        M 20 80
+        Q 20 40 60 40
+      " />
+      <!-- Motivo tipo flor / remate -->
+      <path d="
+        M 40 60
+        C 30 50 30 35 40 30
+        C 50 25 60 30 60 40
+        C 60 50 50 60 40 60
+        Z
+      " />
+    </g>
+  </defs>
+
+  <!-- ===== Carta principal ===== -->
+
+  <!-- Rectángulo principal -->
+  <rect
+    x="40" y="40"
+    width="920" height="1320"
+    rx="90"
+    fill="url(#bg)"
+    stroke="url(#silver)"
+    stroke-width="10" />
+
+  <!-- Marco interior -->
+  <rect
+    x="110" y="110"
+    width="780" height="1180"
+    rx="70"
+    fill="none"
+    stroke="url(#silver)"
+    stroke-width="6" />
+
+  <!-- Óvalo central -->
+  <ellipse
+    cx="500" cy="700"
+    rx="260" ry="360"
+    fill="none"
+    stroke="url(#silver)"
+    stroke-width="6" />
+
+  <!-- ===== Ornamentos reutilizados por simetría ===== -->
+
+  <!-- Esquina superior izquierda -->
+  <use href="#corner-ornament"
+       x="110" y="110" />
+
+  <!-- Esquina superior derecha -->
+  <use href="#corner-ornament"
+       x="890" y="110"
+       transform="scale(-1,1) translate(-1780,0)" />
+
+  <!-- Esquina inferior izquierda -->
+  <use href="#corner-ornament"
+       x="110" y="1290"
+       transform="scale(1,-1) translate(0,-2580)" />
+
+  <!-- Esquina inferior derecha -->
+  <use href="#corner-ornament"
+       x="890" y="1290"
+       transform="scale(-1,-1) translate(-1780,-2580)" />
+
+  <!-- (Opcional) ornamentos laterales usando el mismo grupo con rotación -->
+  <!--
+  <use href="#corner-ornament"
+       x="110" y="700"
+       transform="rotate(-90 110 700)" />
+  <use href="#corner-ornament"
+       x="890" y="700"
+       transform="rotate(90 890 700)" />
+  -->
+
+  <!-- ===== Centro: símbolos, K y texto ===== -->
+  <g fill="url(#silver)" text-anchor="middle">
+
+    <!-- Arco de símbolos (♥ ♦ ♣ ♠) -->
+    <text
+      x="500" y="520"
+      font-family="serif"
+      font-size="70">
+      ♥ ♦ ♣ ♠
+    </text>
+
+    <!-- Letra K central -->
+    <text
+      x="500" y="720"
+      font-family="Playwrite"
+      font-size="220">
+      K
+    </text>
+
+    <!-- Texto KLOUDIO -->
+    <text
+      x="500" y="880"
+      font-family="serif"
+      font-size="60"
+      letter-spacing="8">
+      KLOUDIO 
+      </text>
+  </g>
+
+</svg>
