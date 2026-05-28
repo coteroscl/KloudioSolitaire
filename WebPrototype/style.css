@@ -346,7 +346,7 @@ body {
 
 /* Theme Mappings */
 .theme-navy-silver .card-back {
-    background-image: url('assets/CardBacks/NavySilver.png');
+    background-image: url('assets/CardBacks/NavySilver.svg');
 }
 
 .theme-black-champagne .card-back {
