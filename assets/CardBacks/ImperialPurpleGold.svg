@@ -1,0 +1,56 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 1000 1400"
+  preserveAspectRatio="xMidYMid meet">
+
+  <defs>
+    <!-- Hunter Green -->
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0B1F0A"/>
+      <stop offset="100%" stop-color="#1F4D1A"/>
+    </linearGradient>
+
+    <!-- Gold -->
+    <linearGradient id="silver" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFF4C2"/>
+      <stop offset="50%" stop-color="#D8A63A"/>
+      <stop offset="100%" stop-color="#FFFAE0"/>
+    </linearGradient>
+
+    <g id="corner-ornament" fill="none" stroke="url(#silver)" stroke-width="5">
+      <path d="M 0 80 Q 0 0 80 0" />
+      <path d="M 10 80 Q 10 20 70 20" />
+      <path d="M 20 80 Q 20 40 60 40" />
+      <path d="M 40 60
+               C 30 50 30 35 40 30
+               C 50 25 60 30 60 40
+               C 60 50 50 60 40 60 Z" />
+    </g>
+  </defs>
+
+  <rect x="40" y="40" width="920" height="1320" rx="90"
+        fill="url(#bg)" stroke="url(#silver)" stroke-width="10" />
+
+  <rect x="110" y="110" width="780" height="1180" rx="70"
+        fill="none" stroke="url(#silver)" stroke-width="6" />
+
+  <ellipse cx="500" cy="700" rx="260" ry="360"
+           fill="none" stroke="url(#silver)" stroke-width="6" />
+
+  <use href="#corner-ornament" x="110" y="110" />
+  <use href="#corner-ornament" x="890" y="110"
+       transform="scale(-1,1) translate(-1780,0)" />
+  <use href="#corner-ornament" x="110" y="1290"
+       transform="scale(1,-1) translate(0,-2580)" />
+  <use href="#corner-ornament" x="890" y="1290"
+       transform="scale(-1,-1) translate(-1780,-2580)" />
+
+  <g fill="url(#silver)" text-anchor="middle">
+    <text x="500" y="520" font-family="serif" font-size="70">♥ ♦ ♣ ♠</text>
+    <text x="500" y="720" font-family="Playwrite" font-size="220">K</text>
+    <text x="500" y="880" font-family="serif" font-size="60" letter-spacing="8">
+      KLOUDIO
+    </text>
+  </g>
+
+</svg>
