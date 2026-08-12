@@ -1,4 +1,38 @@
-﻿*.mp4
+﻿# Media / archives
+*.mp4
 *.zip
 *.rar
 *.mp3
+
+# Editor / local workspace
+.vscode/
+.vscode/*
+.idea/
+*.swp
+*.swo
+*.tmp
+*.bak
+*.orig
+*.rej
+*.log
+
+# OS noise
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Windows short-name temp artifacts created during extraction / rename workflows
+**/*~*.png
+**/*~*.PNG
+**/*~*.svg
+**/*~*.SVG
+**/*~*.jpg
+**/*~*.jpeg
+**/*~*.gif
+**/*~*.bmp
+
+# Generic generated / local cache files
+**/__MACOSX/
+**/.cache/
+**/tmp/
+

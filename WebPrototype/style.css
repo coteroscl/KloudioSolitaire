@@ -118,16 +118,16 @@ body {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     grid-template-rows: 1fr 1fr 1fr;
-    gap: 4px;
-    padding: 60px 20px 10px;
+    gap: 1px;
+    padding: 18px 6px 6px;
 }
 
 .board-cell {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    /* Tighter gap between Reserve and Tableau */
+    gap: 1px;
+    /* Minimal safe gap between Reserve and Tableau */
 }
 
 /* Center cell: Just the Ace foundation */
@@ -169,25 +169,25 @@ body {
 #cell-n {
     flex-direction: column-reverse;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
 }
 
 #cell-s {
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
 }
 
 #cell-w {
     flex-direction: row;
-    align-items: flex-start;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: center;
 }
 
 #cell-e {
     flex-direction: row;
-    align-items: flex-start;
-    justify-content: flex-start;
+    align-items: center;
+    justify-content: center;
 }
 
 /* ---- Stock Area ---- */
@@ -195,15 +195,15 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 24px;
-    padding: 8px 24px 14px;
+    gap: 8px;
+    padding: 6px 12px 8px;
     background: rgba(0, 0, 0, 0.2);
     border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 #temp-stacks-container {
     display: flex;
-    gap: 12px;
+    gap: 6px;
 }
 
 /* ---- Pile (generic drop zone) ---- */
@@ -339,26 +339,44 @@ body {
     height: 100%;
     background-size: cover;
     background-position: center;
+    background-repeat: no-repeat;
     box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
     background-color: #111;
     /* fallback */
 }
 
-/* Theme Mappings */
-.theme-navy-silver .card-back {
+/* Theme Mappings - Deck 0 (First Deck) */
+.theme-navy-silver .card.deck-0 .card-back {
     background-image: url('assets/CardBacks/NavySilver.svg');
 }
 
-.theme-black-champagne .card-back {
+.theme-black-champagne .card.deck-0 .card-back {
     background-image: url('assets/CardBacks/MatteBlackChampagneGold.png');
 }
 
-.theme-burgundy-gold .card-back {
+.theme-burgundy-gold .card.deck-0 .card-back {
     background-image: url('assets/CardBacks/BurgundyGold.png');
 }
 
-.theme-white-silver .card-back {
+.theme-white-silver .card.deck-0 .card-back {
     background-image: url('assets/CardBacks/PearlWhiteSilver.png');
+}
+
+/* Theme Mappings - Deck 1 (Second Deck - Distinct Design) */
+.theme-navy-silver .card.deck-1 .card-back {
+    background-image: url('assets/CardBacks/HunterGreenGold.svg');
+}
+
+.theme-black-champagne .card.deck-1 .card-back {
+    background-image: url('assets/CardBacks/BurgundyGold.png');
+}
+
+.theme-burgundy-gold .card.deck-1 .card-back {
+    background-image: url('assets/CardBacks/ImperialPurpleGold.png');
+}
+
+.theme-white-silver .card.deck-1 .card-back {
+    background-image: url('assets/CardBacks/TurquoiseSilver.png');
 }
 
 /* Card being dragged (in its original position) */
@@ -547,7 +565,6 @@ body {
     z-index: 10;
     justify-content: flex-start;
     align-items: flex-start;
-    gap: -43px !important;
     overflow: visible;
 }
 
@@ -562,21 +579,8 @@ body {
 }
 
 /* Sideways Orientation for North and South (Physical Rotation) */
-#board #cell-n .card,
-#board #cell-s .card {
-    width: var(--card-width) !important;
-    /* Vertical 65px */
-    height: var(--card-height) !important;
-    /* Vertical 91px */
-    transform: translate(-50%, -50%) rotate(90deg) !important;
-    position: absolute !important;
-    left: 50% !important;
-    top: 50% !important;
-}
-
-/* North and South Piles must accommodate horizontal cards */
-#cell-n .pile,
-#cell-s .pile {
+#board #cell-n .pile,
+#board #cell-s .pile {
     width: var(--card-height) !important;
     height: var(--card-width) !important;
     min-height: 0 !important;
@@ -585,10 +589,25 @@ body {
     justify-content: center;
 }
 
+/* Cards in North/South - rotated layout */
+#board #cell-n .card,
+#board #cell-s .card {
+    width: var(--card-width) !important;
+    height: var(--card-height) !important;
+    transform: rotate(90deg) !important;
+    position: relative !important;
+}
+
 /* Fix Tableau cascade for North/South (Special Flex logic) */
 #board #cell-n .tableau-pile,
 #board #cell-s .tableau-pile {
     padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+#board #cell-n .tableau-pile {
+    flex-direction: column-reverse !important;
 }
 
 #board #cell-n .tableau-pile .card,
@@ -624,7 +643,7 @@ body {
 }
 
 #board #cell-n #tableau-0 .card+.card {
-    margin-bottom: -68px !important;
+    margin-bottom: calc(var(--card-height) * -0.7) !important;
     margin-top: 0 !important;
 }
 
@@ -634,7 +653,7 @@ body {
 }
 
 #board #cell-s #tableau-1 .card+.card {
-    margin-top: -68px !important;
+    margin-top: calc(var(--card-height) * -0.7) !important;
 }
 
 /* West (Fan LEFT): visible card is index 2 (left-most) and grows LEFT away from center */
@@ -644,7 +663,7 @@ body {
 
 #tableau-2 .card+.card {
     margin-left: 0 !important;
-    margin-right: -43px !important;
+    margin-right: calc(var(--card-width) * -0.6) !important;
 }
 
 /* East (Fan RIGHT): visible card is index 2 (right-most) and grows RIGHT away from center */
@@ -653,7 +672,7 @@ body {
 }
 
 #tableau-3 .card+.card {
-    margin-left: -43px !important;
+    margin-left: calc(var(--card-width) * -0.6) !important;
 }
 
 #cell-n .tableau-pile:empty,
@@ -762,4 +781,247 @@ body {
     background: #3e2723;
     transform: scale(1.05);
     box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================
+   Mobile Responsiveness & Touch Optimization
+   ============================================ */
+
+/* Tablet (768px to 1024px) */
+@media (max-width: 1024px) {
+    :root {
+        --card-width: 56px;
+        --card-height: 78px;
+    }
+    
+    #board {
+        padding: 16px 6px 6px;
+        gap: 1px;
+    }
+    
+    .toolbar-btn .btn-label {
+        font-size: 8px;
+    }
+}
+
+/* Mobile Devices (below 768px) */
+@media (max-width: 768px) {
+    :root {
+        --card-width: 48px;
+        --card-height: 67px;
+    }
+    
+    body {
+        overflow-y: auto;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+    }
+    
+    #game-container {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+    }
+    
+    #toolbar {
+        gap: 8px;
+        padding: 8px 12px;
+        flex-wrap: wrap;
+        justify-content: space-around;
+    }
+    
+    .toolbar-btn {
+        padding: 4px 8px;
+        font-size: 11px;
+    }
+    
+    .toolbar-btn .btn-icon {
+        font-size: 16px;
+    }
+    
+    .toolbar-btn .btn-label {
+        font-size: 7px;
+        white-space: nowrap;
+    }
+    
+    #phase-display {
+        font-size: 12px;
+        padding: 0 8px;
+    }
+    
+    #seed-display {
+        font-size: 9px !important;
+        margin: 0 4px !important;
+    }
+    
+    #board {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: 1fr 1fr 1fr;
+        gap: 1px;
+        padding: 12px 4px 4px;
+        max-width: 100%;
+        overflow: hidden;
+    }
+    
+    .board-cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1px;
+        min-height: 70px;
+    }
+    
+    .pile {
+        width: var(--card-width);
+        height: var(--card-height);
+        flex-shrink: 0;
+    }
+    
+    .card {
+        width: var(--card-width) !important;
+        height: var(--card-height) !important;
+        touch-action: manipulation;
+    }
+    
+    /* North/South rotated cards on mobile */
+    #board #cell-n .card,
+    #board #cell-s .card {
+        width: var(--card-height) !important;
+        height: var(--card-width) !important;
+        transform: rotate(90deg) !important;
+    }
+    
+    #cell-n .pile,
+    #cell-s .pile {
+        width: var(--card-width) !important;
+        height: var(--card-height) !important;
+    }
+    
+    /* Stock area for mobile */
+    #stock-area {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.2);
+        min-height: 70px;
+        flex-wrap: wrap;
+    }
+    
+    #stockpile {
+        width: var(--card-width);
+        height: var(--card-height);
+    }
+    
+    .temp-stack {
+        width: var(--card-width);
+        height: var(--card-height);
+    }
+    
+    /* Overlay for mobile */
+    .overlay {
+        padding: 20px;
+    }
+    
+    .overlay-content {
+        padding: 20px;
+        border-radius: 8px;
+    }
+    
+    .overlay-content h1 {
+        font-size: 24px;
+        margin-bottom: 10px;
+    }
+    
+    .overlay-btn {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+    
+    /* Drag ghost on mobile - smaller and more visible */
+    #drag-ghost {
+        opacity: 1;
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6)) brightness(1.1);
+    }
+    
+    #drag-ghost .card {
+        width: var(--card-width) !important;
+        height: var(--card-height) !important;
+    }
+}
+
+/* Small phones (below 480px) */
+@media (max-width: 480px) {
+    :root {
+        --card-width: 40px;
+        --card-height: 56px;
+    }
+    
+    #toolbar {
+        padding: 6px 8px;
+        gap: 6px;
+    }
+    
+    .toolbar-btn {
+        padding: 3px 6px;
+        gap: 1px;
+    }
+    
+    .toolbar-btn .btn-icon {
+        font-size: 14px;
+    }
+    
+    .toolbar-btn .btn-label {
+        font-size: 6px;
+    }
+    
+    #board {
+        padding: 10px 4px 4px;
+        gap: 1px;
+    }
+    
+    .board-cell {
+        min-height: 60px;
+        gap: 1px;
+    }
+    
+    /* Hide seed display on very small screens */
+    #seed-display {
+        display: none;
+    }
+    
+    #phase-display {
+        font-size: 10px;
+        padding: 0 4px;
+    }
+}
+
+/* Landscape orientation for phones */
+@media (max-width: 768px) and (orientation: landscape) {
+    :root {
+        --card-width: 40px;
+        --card-height: 56px;
+    }
+    
+    #board {
+        padding: 12px 8px 8px;
+        min-height: auto;
+    }
+    
+    .board-cell {
+        min-height: 60px;
+    }
+    
+    #toolbar {
+        padding: 6px 8px;
+    }
+    
+    #stock-area {
+        padding: 6px 8px;
+        min-height: auto;
+    }
 }
